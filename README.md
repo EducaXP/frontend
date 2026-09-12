@@ -1,0 +1,85 @@
+# EducaXP — frontend PWA
+
+Aplicação React + TypeScript + Vite integrada à API Fastify. Usa os assets originais de `../stitch_educaxp`, com interface responsiva, missões colaborativas e acesso offline previamente preparado.
+
+## Executar
+
+Requisito: Node.js 22.13+ e npm. Primeiro prepare e execute o backend conforme [seu README](../backend/README.md). Use o login docente, código da turma e PINs impressos pelo `seed:demo`; não existem credenciais fixas na interface.
+
+Em outro terminal, dentro de `frontend`:
+
+```powershell
+npm ci
+npm run dev
+```
+
+Abra `http://127.0.0.1:5173`. O proxy encaminha `/api` ao backend em `http://127.0.0.1:3333`. Para outro endereço, copie `.env.example` para `.env` e ajuste `API_PROXY_TARGET`. Preserve um `.env` já existente.
+
+Para verificar instalação e funcionamento offline, use a compilação de produção:
+
+```powershell
+npm run build
+npm run preview
+```
+
+Abra `http://127.0.0.1:4173`. O service worker fica ativo na compilação, não no servidor de desenvolvimento. Desenvolvimento e preview têm armazenamentos separados, pois usam portas diferentes.
+
+O botão de instalação aparece quando o navegador oferece essa opção; também é possível instalar pelo menu do navegador. Em celulares, service worker e criptografia exigem HTTPS. Acesso por IP local via HTTP não substitui esse requisito. Não há hospedagem configurada. Para publicar, sirva `dist` por HTTPS e encaminhe `/api` à API na mesma origem; `vite preview` serve apenas à verificação local.
+
+## Fluxos implementados
+
+| Pessoa e necessidade            | Fluxo verificável                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Maria: preparar uma atividade   | Criar/adaptar missão com objetivo, etapas, alternativa em papel e rubrica; revisar e publicar   |
+| Maria: organizar colaboração    | Cadastrar estudantes, entregar PIN individual, formar equipes e alternar papéis                 |
+| Enzo: aprender em equipe        | Consultar missões, marcar etapas e registrar produção e reflexão do grupo                       |
+| Enzo: continuar sem rede        | Preparar o acesso, abrir missão, editar offline, recarregar e recuperar o rascunho              |
+| Equipe: preservar contribuições | Fila de envio com tentativas idempotentes e comparação explícita quando outra cópia foi enviada |
+| Maria: mediar e avaliar         | Consultar entregas, revisar critérios, publicar devolutiva e reconhecer participação com XP     |
+| Participação sem aparelho       | Professor registra produção em papel/oral pelo mesmo fluxo e com reconhecimento equivalente     |
+| Enzo: personalizar              | Equipar itens cosméticos liberados por participação; imagem original do avatar e modo econômico |
+| Turma: pedir apoio              | Pedido de orientação, resposta docente e combinado de pausa                                     |
+
+Não há medição de atenção, troca de abas, tempo conectado ou ranking individual. O planejamento usa um modelo local editável; não é IA generativa. Referências à BNCC permanecem pendentes de validação docente.
+
+## Uso offline e aparelhos compartilhados
+
+1. Entre com conexão e a opção **Preparar acesso offline neste aparelho** marcada. Aguarde a indicação de que o aplicativo está preparado para abrir offline e confira as missões da turma.
+2. Use sempre **Entrar e continuar**, com as mesmas credenciais. Sem internet, ou se o servidor estiver indisponível, o conteúdo local previamente preparado abre automaticamente. É possível consultar missões, preparar planejamento e guardar produção/reflexão textual.
+3. **Guardar para enviar** coloca a produção na fila. Com o aplicativo aberto, a conexão voltar é suficiente: o acesso é confirmado/renovado em memória e as entregas são sincronizadas automaticamente, inclusive após recarregar e entrar offline. Não é necessário sair, entrar novamente ou apertar um botão de sincronização. Rascunhos que ainda não foram enviados para a fila continuam privados no aparelho.
+4. Antes de trocar de pessoa, use **Sair ou trocar perfil**. A aplicação informa pendências e protege o conteúdo local. Não compartilhe PINs; a produção é compartilhada apenas entre os integrantes do grupo e o professor.
+
+O retorno da rede dispara uma tentativa e a fila é reavaliada a cada cinco segundos enquanto o aplicativo estiver aberto. Falhas de transporte/servidor usam espera progressiva (até 60 segundos); limites de requisição respeitam Retry-After. Credenciais recusadas ou identidade diferente interrompem as tentativas automáticas e exibem uma mensagem, preservando os rascunhos. O aplicativo não envia com a página fechada.
+
+Publicação, cadastro, ajuda, avaliação e personalização exigem conexão. Novos conteúdos não ficam disponíveis offline até uma atualização online. Não há colaboração em tempo real sem rede.
+
+O IndexedDB guarda um conjunto de dados cifrado por identidade (AES-GCM; chave derivada da credencial com PBKDF2). Tokens e as credenciais digitadas permanecem somente em memória durante o acesso ativo, para permitir reconexão e renovação automática; não entram no cache nem no IndexedDB. Ao encerrar, esse acesso é descartado. Depois de fechar/recarregar o aplicativo, desbloqueie o conteúdo pelo mesmo formulário. Uma trava entre abas evita gravações concorrentes do mesmo perfil no mesmo navegador. Sem suporte ao armazenamento/criptografia/trava, desmarque a preparação offline para usar o acesso online temporário, que perde rascunhos ao fechar.
+
+O acesso local expira após sete dias da última autenticação online. Limpeza de dados, falta de espaço, navegação privada ou remoção automática pelo navegador podem apagar o conteúdo. A interface informa falhas de gravação; mantenha a página aberta e copie o texto se isso acontecer. Atualizações da PWA aguardam a resolução de trabalho pendente.
+
+**Limite do MVP:** um PIN de seis dígitos tem baixa entropia; a cifragem não representa proteção contra um atacante com cópia dos dados e capacidade de tentar PINs offline. A revogação no servidor só é percebida após conexão. Se o PIN/senha mudar, o conjunto local continua usando a credencial anterior: recupere e copie os rascunhos com ela antes de limpar os dados do site e preparar um novo acesso. Não há migração automática nem recuperação de credenciais. Esses limites precisam ser resolvidos antes de um piloto com dados reais.
+
+## Assets e orçamento
+
+Veja [origem dos assets](docs/assets.md). Logo e avatar são servidos localmente; fontes usam a família do sistema, sem downloads externos. A imagem do avatar (~1,29 MB) só é solicitada ao abrir sua tela e então fica em cache público. O avatar possui alternativa visual sem imagem se ela não estiver disponível.
+
+Orçamento inicial: precache estático inferior a 600 KiB e JavaScript principal inferior a 100 kB gzip. Na compilação validada: ~458 KiB de precache, ~83 kB gzip no JavaScript principal e ~9,5 kB gzip no CSS. Telas de aluno, professor e produção são divididas em módulos. Esses números não são medições de velocidade em aparelhos de entrada.
+
+## Verificação
+
+```powershell
+npm run check
+```
+
+Executa testes unitários do armazenamento/fila, verificação TypeScript e build. Para testes de navegador com API e SQLite reais, compile o backend primeiro e então execute:
+
+```powershell
+npm run test:e2e
+```
+
+A suíte inicia servidores exclusivos nas portas 4319 e 4185 e cria dados fictícios isolados em `.test-data`; não usa o banco de desenvolvimento. No Windows usa o Edge instalado. Em outros ambientes instale o Chromium do Playwright com `npx playwright install chromium`; é possível escolher um navegador instalado via `PLAYWRIGHT_CHANNEL`.
+
+Os testes cobrem recarga offline, reconexão sem novo login, renovação de sessão expirada, servidor indisponível mesmo com rede ativa, troca de perfil, proteção entre abas, envio, revisão, XP, avatar, publicação, organização e conflito entre duas cópias. O axe verifica regras WCAG A/AA no login e início do estudante a 320 px. Isso não substitui validação manual com leitores de tela ou em aparelhos reais. No host de desenvolvimento, o antivírus injeta requisições próprias no Edge; o teste de dependências externas as identifica separadamente.
+
+Limites adicionais: evidências textuais, composição fixa dos grupos, ausência de upload de mídia, push, gestão escolar e IA generativa. Ainda é necessário validar iOS/Safari, Android de entrada, persistência sob pressão de espaço e uso em escola real.
+`overrides.vitest.vite` mantém o executor de testes na mesma versão compatível de Vite da aplicação, evitando uma segunda cadeia de ferramentas durante a resolução das dependências.

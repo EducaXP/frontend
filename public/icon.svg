@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320" fill="none">
+  <!-- Glowing aura behind crest -->
+  <defs>
+    <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5" />
+      <stop offset="100%" stop-color="#312E81" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#EAB308" />
+    </linearGradient>
+    <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00E5FF" />
+      <stop offset="100%" stop-color="#00B6FF" />
+    </linearGradient>
+  </defs>
+
+  <!-- Cyan/blue aura -->
+  <path d="M 60 180 C 60 100, 100 40, 160 40 C 220 40, 260 100, 260 180 Z" fill="#00E5FF" opacity="0.18" filter="url(#glow-cyan)" />
+
+  <!-- Rays of discovery / sparks -->
+  <!-- Top ray -->
+  <line x1="160" y1="36" x2="160" y2="16" stroke="#FACC15" stroke-width="6" stroke-linecap="round" />
+  <!-- Angle rays -->
+  <line x1="120" y1="46" x2="106" y2="28" stroke="#FACC15" stroke-width="5" stroke-linecap="round" />
+  <line x1="200" y1="46" x2="214" y2="28" stroke="#FACC15" stroke-width="5" stroke-linecap="round" />
+  <line x1="88" y1="72" x2="70" y2="58" stroke="#00E5FF" stroke-width="5" stroke-linecap="round" />
+  <line x1="232" y1="72" x2="250" y2="58" stroke="#00E5FF" stroke-width="5" stroke-linecap="round" />
+  <line x1="66" y1="108" x2="46" y2="100" stroke="#00E5FF" stroke-width="5" stroke-linecap="round" />
+  <line x1="254" y1="108" x2="274" y2="100" stroke="#00E5FF" stroke-width="5" stroke-linecap="round" />
+  <line x1="56" y1="150" x2="36" y2="150" stroke="#00E5FF" stroke-width="5" stroke-linecap="round" />
+  <line x1="264" y1="150" x2="284" y2="150" stroke="#00E5FF" stroke-width="5" stroke-linecap="round" />
+
+  <!-- Outer Dome / Portal Arch -->
+  <path d="M 60 185 C 60 90, 105 45, 160 45 C 215 45, 260 90, 260 185" stroke="#00E5FF" stroke-width="12" stroke-linecap="round" fill="none" filter="url(#glow-cyan)" />
+  <path d="M 60 185 C 60 90, 105 45, 160 45 C 215 45, 260 90, 260 185" stroke="#4338CA" stroke-width="8" stroke-linecap="round" fill="none" />
+
+  <!-- Inner Portal Arch background -->
+  <path d="M 66 185 C 66 98, 108 55, 160 55 C 212 55, 254 98, 254 185 L 254 210 Q 210 195, 160 215 Q 110 195, 66 210 Z" fill="url(#bookGrad)" />
+
+  <!-- Open Book Base / Wings -->
+  <!-- Left page -->
+  <path d="M 160 215 C 120 195, 75 200, 56 215 C 50 220, 48 226, 48 234 L 48 244 C 48 252, 54 258, 62 255 C 88 245, 126 244, 160 262 Z" fill="#3730A3" stroke="#00B6FF" stroke-width="5" stroke-linejoin="round" />
+  <!-- Right page -->
+  <path d="M 160 215 C 200 195, 245 200, 264 215 C 270 220, 272 226, 272 234 L 272 244 C 272 252, 266 258, 258 255 C 232 245, 194 244, 160 262 Z" fill="#3730A3" stroke="#00B6FF" stroke-width="5" stroke-linejoin="round" />
+
+  <!-- Book Spine Center Marker -->
+  <path d="M 160 210 L 160 264" stroke="#00E5FF" stroke-width="4" stroke-linecap="round" />
+
+  <!-- Inner Cyan Radiating Glow Lines inside dome -->
+  <line x1="160" y1="62" x2="160" y2="82" stroke="#FDE047" stroke-width="4" stroke-linecap="round" />
+  <line x1="126" y1="72" x2="136" y2="88" stroke="#FDE047" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="194" y1="72" x2="184" y2="88" stroke="#FDE047" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="98" y1="96" x2="114" y2="108" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="222" y1="96" x2="206" y2="108" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="82" y1="130" x2="102" y2="136" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="238" y1="130" x2="218" y2="136" stroke="#00E5FF" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- Center Glowing Star with Cyan Outline -->
+  <polygon points="160,88 174,124 212,127 182,151 191,188 160,168 129,188 138,151 108,127 146,124" fill="url(#goldGrad)" stroke="#00E5FF" stroke-width="6" stroke-linejoin="round" filter="url(#glow-cyan)" />
+  <polygon points="160,88 174,124 212,127 182,151 191,188 160,168 129,188 138,151 108,127 146,124" fill="url(#goldGrad)" stroke="#FDE047" stroke-width="2" stroke-linejoin="round" />
+
+  <!-- XP Energy Lightning Bolt inside Star -->
+  <polygon points="162,106 148,138 161,138 156,168 176,132 163,132" fill="#FFFFFF" opacity="0.95" />
+</svg>
