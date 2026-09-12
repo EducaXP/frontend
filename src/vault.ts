@@ -1,5 +1,5 @@
 import { openDB } from "idb";
-import type { Credentials, Workspace } from "./types";
+import type { Credentials, User, Workspace } from "./types";
 
 interface Envelope {
   salt: Uint8Array<ArrayBuffer>;
@@ -45,37 +45,76 @@ export class Vault {
     readonly id: string,
     private key: CryptoKey,
     private salt: Uint8Array<ArrayBuffer>,
+    private profileId: string,
   ) {}
   static async open(
     credentials: Credentials,
-  ): Promise<{ vault: Vault; data?: Workspace }> {
+    authenticatedUser?: User,
+  ): Promise<{ vault: Vault; data?: Workspace; preserved?: boolean }> {
     if (!crypto.subtle)
       throw new Error(
         "O acesso offline precisa de HTTPS ou localhost neste navegador.",
       );
-    const id = await identity(credentials);
+    const profileId = await identity(credentials);
     const db = await database();
-    const saved: Envelope | undefined = await db.get("vaults", id);
-    db.close();
-    const salt = saved?.salt ?? crypto.getRandomValues(new Uint8Array(16));
-    const key = await derive(credentials.secret, salt);
-    const vault = new Vault(id, key, salt);
-    if (!saved) return { vault };
+    let entries: { id: string; saved: Envelope }[];
     try {
-      const plaintext = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: saved.iv },
-        key,
-        saved.ciphertext,
-      );
-      return {
-        vault,
-        data: JSON.parse(new TextDecoder().decode(plaintext)) as Workspace,
-      };
-    } catch {
-      throw new Error(
-        "Não foi possível abrir os dados locais. Confira as credenciais. Se o PIN mudou, use o PIN anterior para recuperar rascunhos antes de preparar um novo acesso.",
-      );
+      // Include the original v1 record and any later, separately encrypted copies.
+      const tx = db.transaction("vaults");
+      const range = IDBKeyRange.bound(profileId, profileId + "\uffff");
+      const [keys, values] = await Promise.all([
+        tx.store.getAllKeys(range),
+        tx.store.getAll(range),
+      ]);
+      await tx.done;
+      entries = keys
+        .map((id, i) => ({ id: String(id), saved: values[i] as Envelope }))
+        .reverse();
+    } finally {
+      db.close();
     }
+    for (const { id, saved } of entries) {
+      const key = await derive(credentials.secret, saved.salt);
+      let data: Workspace;
+      try {
+        const plaintext = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: saved.iv },
+          key,
+          saved.ciphertext,
+        );
+        data = JSON.parse(new TextDecoder().decode(plaintext)) as Workspace;
+      } catch {
+        continue;
+      }
+      // A recreated account must never inherit the previous owner's drafts or queue.
+      if (
+        authenticatedUser &&
+        (data.user.id !== authenticatedUser.id ||
+          data.user.schoolId !== authenticatedUser.schoolId ||
+          data.user.role !== authenticatedUser.role)
+      )
+        continue;
+      return { vault: new Vault(id, key, saved.salt, profileId), data };
+    }
+    if (entries.length && !authenticatedUser)
+      throw new Error(
+        "Não foi possível abrir os dados locais com estas credenciais. Confira o PIN ou a senha. Se houve uma alteração, conecte-se para validar o novo acesso; os rascunhos anteriores continuam protegidos pela credencial anterior.",
+      );
+    // Only a confirmed online identity may prepare a fresh copy beside an unreadable
+    // or different-account record. Never overwrite or delete that previous record.
+    const id = entries.length
+      ? profileId +
+        ":" +
+        String(Date.now()).padStart(16, "0") +
+        ":" +
+        crypto.randomUUID()
+      : profileId;
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const key = await derive(credentials.secret, salt);
+    return {
+      vault: new Vault(id, key, salt, profileId),
+      preserved: entries.length > 0,
+    };
   }
   save(workspace: Workspace) {
     // Snapshot immediately, then serialize writes so slow encryption never overwrites a later edit.
@@ -113,17 +152,21 @@ export class Vault {
       );
     return new Promise((resolve, reject) => {
       void navigator.locks
-        .request(`educaxp:${this.id}`, { ifAvailable: true }, async (lock) => {
-          if (!lock) {
-            reject(
-              new Error(
-                "Este perfil já está aberto em outra aba. Encerre o acesso naquela aba para continuar.",
-              ),
-            );
-            return;
-          }
-          await new Promise<void>((release) => resolve(release));
-        })
+        .request(
+          `educaxp:${this.profileId}`,
+          { ifAvailable: true },
+          async (lock) => {
+            if (!lock) {
+              reject(
+                new Error(
+                  "Este perfil já está aberto em outra aba. Encerre o acesso naquela aba para continuar.",
+                ),
+              );
+              return;
+            }
+            await new Promise<void>((release) => resolve(release));
+          },
+        )
         .catch(reject);
     });
   }

@@ -40,7 +40,8 @@ import type {
 } from "./types";
 import { Badge, Brand, ErrorText, MissionArt, Modal } from "./ui";
 import { Vault } from "./vault";
-import { SessionAccess } from "./session-access";
+import type { SessionAccess } from "./session-access";
+import { prepareAccess } from "./prepare-access";
 
 const Student = lazy(() => import("./pages/Student"));
 const Teacher = lazy(() => import("./pages/Teacher"));
@@ -522,29 +523,11 @@ export default function App() {
   }, [sync, online, session?.id]);
 
   async function login(credentials: Credentials, prepare: boolean) {
-    const local = prepare ? await Vault.open(credentials) : null;
-    const access = new SessionAccess(credentials, local?.data?.user.id);
-    const authenticated = navigator.onLine ? await access.ensure() : null;
-    if (!authenticated && access.blocked) {
-      access.close();
-      throw access.failure;
-    }
-    if (!authenticated && !local?.data) {
-      access.close();
-      throw new Error(
-        "O primeiro acesso precisa de conexão com o servidor. Não há conteúdo preparado para este perfil neste aparelho.",
-      );
-    }
-    if (
-      !authenticated &&
-      Date.now() - local!.data!.authenticatedAt > 7 * 86400000
-    ) {
-      access.close();
-      throw new Error(
-        "Conecte-se para renovar o acesso offline, disponível por até 7 dias.",
-      );
-    }
-    const user = authenticated?.user || local!.data!.user;
+    const { access, authenticated, local, user } = await prepareAccess(
+      credentials,
+      prepare,
+      navigator.onLine,
+    );
     const data: Workspace = local?.data || {
       user,
       authenticatedAt: Date.now(),
@@ -587,6 +570,10 @@ export default function App() {
       } catch (error) {
         notice(message(error));
       }
+      if (local?.preserved)
+        notice(
+          "Acesso confirmado. Preparamos uma nova cópia offline e preservamos os dados locais anteriores separadamente.",
+        );
     } else
       notice(
         "Conteúdo salvo aberto. As entregas na fila serão enviadas automaticamente quando a conexão voltar.",

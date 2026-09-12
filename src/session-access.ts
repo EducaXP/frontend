@@ -104,6 +104,18 @@ export class SessionAccess {
       return null;
     }
   }
+  bindUser(userId: string) {
+    if (
+      (this.expectedUserId && this.expectedUserId !== userId) ||
+      (this.authenticated && this.authenticated.user.id !== userId)
+    )
+      throw new ApiError(
+        403,
+        "PROFILE_MISMATCH",
+        "O acesso corresponde a outro perfil. Seus rascunhos continuam protegidos.",
+      );
+    this.expectedUserId = userId;
+  }
   invalidate(token: string | null) {
     if (this.authenticated?.token === token) this.authenticated = null;
   }
