@@ -3045,3 +3045,16 @@ blockquote {
 .avatar-portrait > b {
   z-index: 1;
 }
+
+.assistant-panel { margin-bottom: 24px; }
+.assistant-panel h2 { margin-bottom: 4px; }
+.assistant-panel .row > div { min-width: 0; }
+.assistant-conversation { display: grid; gap: 12px; margin: 20px 0; max-height: 350px; overflow-y: auto; }
+.assistant-message { padding: 14px 18px; border-radius: 14px; background: #f0f5fb; }
+.assistant-message.user { background: #edf1ff; margin-left: 24px; }
+.assistant-message p, .assistant-proposal p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.assistant-message p { margin-bottom: 0; }
+.assistant-proposal { margin-top: 24px; padding: 22px; border: 1px solid #d4cff1; border-radius: 16px; background: #fcfbff; }
+.assistant-proposal > h3 { font-size: 18px; margin-top: 22px; }
+.assistant-proposal > ol > li { padding: 8px 0; }
+@media (max-width: 640px) { .assistant-proposal { padding: 14px; } .assistant-panel .round-icon { display: none; } }

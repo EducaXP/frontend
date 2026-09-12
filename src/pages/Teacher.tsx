@@ -32,6 +32,7 @@ import type {
 import { Badge, Empty, ErrorText, Modal, PageTitle } from "../ui";
 import { template } from "../template";
 import MissionWorkspace from "./MissionWorkspace";
+import PlanningAssistantPanel from "./PlanningAssistant";
 
 export default function Teacher({ path }: { path: string }) {
   const { data } = useApp();
@@ -327,8 +328,8 @@ function Overview() {
                 <Sparkles size={24} />
                 <h3>Uma ideia para começar</h3>
                 <p>
-                  Adapte um modelo de missão e construa uma rubrica com
-                  critérios claros.
+                  Converse com o assistente para criar uma missão e uma rubrica.
+                  Revise tudo no editor antes de publicar.
                 </p>
                 <button
                   className="button white full"
@@ -336,7 +337,7 @@ function Overview() {
                 >
                   Abrir planejamento
                 </button>
-                <small>Modelo local editável · revisão docente</small>
+                <small>Assistente de IA · editor e revisão docente</small>
               </section>
             </aside>
           </div>
@@ -514,6 +515,7 @@ function Editor({ initial }: { initial?: Mission }) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [theme, setTheme] = useState("");
+  const [assistantBusy, setAssistantBusy] = useState(false);
   const planning = data.planning;
   useEffect(() => {
     if (!data.planning && data.selectedClass)
@@ -578,6 +580,7 @@ function Editor({ initial }: { initial?: Mission }) {
     })).catch(() => {});
   }
   async function save(publish: boolean) {
+    if (assistantBusy || busy || saving || storageError || !online) return;
     setBusy(true);
     setError("");
     try {
@@ -630,14 +633,19 @@ function Editor({ initial }: { initial?: Mission }) {
         title="Planejar uma descoberta"
       >
         <Badge tone="violet">
-          <Sparkles size={14} /> Modelo local editável
+          <Sparkles size={14} /> Assistente e editor
         </Badge>
       </PageTitle>
       <div className="alert">
-        <ShieldLabel />O modelo é um ponto de partida. Revise objetivos,
-        instruções e critérios antes de publicar. O alinhamento à BNCC permanece
-        pendente de verificação.
+        <ShieldLabel />
+        Toda proposta é um ponto de partida. Revise objetivos, instruções e
+        critérios antes de publicar. O alinhamento à BNCC permanece pendente de
+        verificação.
       </div>
+      <PlanningAssistantPanel
+        onBusyChange={setAssistantBusy}
+        disabled={busy || saving || !!storageError}
+      />
       <form
         className="stack editor"
         onSubmit={(e) => {
@@ -918,7 +926,9 @@ function Editor({ initial }: { initial?: Mission }) {
           <button
             type="button"
             className="button secondary"
-            disabled={busy || !online || saving || !!storageError}
+            disabled={
+              assistantBusy || busy || !online || saving || !!storageError
+            }
             onClick={(e) => {
               if (e.currentTarget.form?.reportValidity()) void save(false);
             }}
@@ -927,7 +937,9 @@ function Editor({ initial }: { initial?: Mission }) {
           </button>
           <button
             className="button primary"
-            disabled={busy || !online || saving || !!storageError}
+            disabled={
+              assistantBusy || busy || !online || saving || !!storageError
+            }
           >
             <Send size={17} />{" "}
             {busy ? "Salvando…" : "Revisado, publicar missão"}

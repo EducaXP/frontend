@@ -40,7 +40,7 @@ O botão de instalação aparece quando o navegador oferece essa opção; també
 | Enzo: personalizar              | Equipar itens cosméticos liberados por participação; imagem original do avatar e modo econômico |
 | Turma: pedir apoio              | Pedido de orientação, resposta docente e combinado de pausa                                     |
 
-Não há medição de atenção, troca de abas, tempo conectado ou ranking individual. O planejamento usa um modelo local editável; não é IA generativa. Referências à BNCC permanecem pendentes de validação docente.
+Não há medição de atenção, troca de abas, tempo conectado ou ranking individual. O planejamento inclui um painel de conversa, proposta separada para revisão e modelo local editável. O backend pode usar OpenRouter ou uma API compatível, conforme sua configuração. Sem chave, o painel informa que aguarda ativação. Geração requer conexão e clique do professor; a reconexão não envia pedidos de IA automaticamente. Os testes simulam somente o transporte do provedor, sem chamadas a modelos reais. Veja o [contrato e o envio de dados](../docs/decisions/0003-assistente-ia.md). Referências à BNCC permanecem pendentes de validação docente.
 
 ## Uso offline e aparelhos compartilhados
 
@@ -63,7 +63,7 @@ O acesso local expira após sete dias da última autenticação online. Limpeza 
 
 Veja [origem dos assets](docs/assets.md). Logo e avatar são servidos localmente; fontes usam a família do sistema, sem downloads externos. A imagem do avatar (~1,29 MB) só é solicitada ao abrir sua tela e então fica em cache público. O avatar possui alternativa visual sem imagem se ela não estiver disponível.
 
-Orçamento inicial: precache estático inferior a 600 KiB e JavaScript principal inferior a 100 kB gzip. Na compilação validada: ~458 KiB de precache, ~83 kB gzip no JavaScript principal e ~9,5 kB gzip no CSS. Telas de aluno, professor e produção são divididas em módulos. Esses números não são medições de velocidade em aparelhos de entrada.
+Orçamento inicial: precache estático inferior a 600 KiB e JavaScript principal inferior a 100 kB gzip. Na compilação validada: ~465 KiB de precache, ~83 kB gzip no JavaScript principal e ~9,5 kB gzip no CSS. Telas de aluno, professor e produção são divididas em módulos. Esses números não são medições de velocidade em aparelhos de entrada.
 
 ## Verificação
 
@@ -79,7 +79,7 @@ npm run test:e2e
 
 A suíte inicia servidores exclusivos nas portas 4319 e 4185 e cria dados fictícios isolados em `.test-data`; não usa o banco de desenvolvimento. No Windows usa o Edge instalado. Em outros ambientes instale o Chromium do Playwright com `npx playwright install chromium`; é possível escolher um navegador instalado via `PLAYWRIGHT_CHANNEL`.
 
-Os testes cobrem recarga offline, reconexão sem novo login, renovação de sessão expirada, servidor indisponível mesmo com rede ativa, troca de perfil, proteção entre abas, envio, revisão, XP, avatar, publicação, organização e conflito entre duas cópias. O axe verifica regras WCAG A/AA no login e início do estudante a 320 px. Isso não substitui validação manual com leitores de tela ou em aparelhos reais. No host de desenvolvimento, o antivírus injeta requisições próprias no Edge; o teste de dependências externas as identifica separadamente.
+Os testes cobrem recarga offline, reconexão sem novo login, renovação de sessão expirada, servidor indisponível mesmo com rede ativa, troca de perfil, proteção entre abas, envio, revisão, XP, avatar, publicação, organização e conflito entre duas cópias. O fluxo do assistente também é testado com respostas locais simuladas, incluindo refinamento, revisão e recuperação offline. O axe verifica regras WCAG A/AA no login, início do estudante e painel do assistente; há verificação de largura de 320 px. Isso não substitui validação manual com leitores de tela ou em aparelhos reais. No host de desenvolvimento, o antivírus injeta requisições próprias no Edge; o teste de dependências externas as identifica separadamente.
 
-Limites adicionais: evidências textuais, composição fixa dos grupos, ausência de upload de mídia, push, gestão escolar e IA generativa. Ainda é necessário validar iOS/Safari, Android de entrada, persistência sob pressão de espaço e uso em escola real.
+Limites adicionais: evidências textuais, composição fixa dos grupos, ausência de upload de mídia, push e gestão escolar. A qualidade das propostas de IA ainda precisa de validação com modelo real e revisão pedagógica. Ainda é necessário validar iOS/Safari, Android de entrada, persistência sob pressão de espaço e uso em escola real.
 `overrides.vitest.vite` mantém o executor de testes na mesma versão compatível de Vite da aplicação, evitando uma segunda cadeia de ferramentas durante a resolução das dependências.

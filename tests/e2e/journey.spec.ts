@@ -432,3 +432,102 @@ test("servidor indisponível abre cópia local e retoma envio sem evento de rede
     page.getByRole("button", { name: "Entrar e continuar", exact: true }),
   ).toHaveCount(0);
 });
+
+test("assistente: proposta simulada, ajustes, revisão e recuperação offline", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/");
+  await teacherLogin(page);
+  await page.getByRole("button", { name: "Criar missão" }).click();
+  const title = page.getByLabel("Título da missão", { exact: true });
+  await title.fill("Meu rascunho preservado");
+  await page
+    .getByLabel("Recursos disponíveis")
+    .fill("Um celular por equipe, papel e encartes de mercado.");
+  await page
+    .getByLabel("Pedido para o assistente")
+    .fill("Crie uma investigação sobre descontos.");
+  await page.getByRole("button", { name: "Criar com IA", exact: true }).click();
+  const proposal = page.getByRole("article", { name: "Proposta para revisão" });
+  await expect(proposal).toContainText(
+    "Mercado colaborativo: proposta de teste",
+  );
+  await expect(title).toHaveValue("Meu rascunho preservado");
+  await page
+    .getByLabel("Pedido para o assistente")
+    .fill("Adapte para equipes que compartilham um aparelho.");
+  await page.getByRole("button", { name: "Pedir ajuste", exact: true }).click();
+  await expect(proposal).toContainText("Mercado colaborativo: versão ajustada");
+  await expect(title).toHaveValue("Meu rascunho preservado");
+  const audit = await new AxeBuilder({ page })
+    .include(".assistant-panel")
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  expect(audit.violations).toEqual([]);
+  await page
+    .locator(".assistant-panel")
+    .screenshot({ path: "test-results/assistant-desktop.png" });
+  await page.setViewportSize({ width: 320, height: 780 });
+  await expect(page.locator("body")).toHaveJSProperty("scrollWidth", 320);
+  await page
+    .locator(".assistant-panel")
+    .screenshot({ path: "test-results/assistant-mobile.png" });
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await context.setOffline(true);
+  await page.reload();
+  await teacherLogin(page);
+  await page.getByRole("button", { name: "Criar missão" }).click();
+  await expect(proposal).toContainText("Mercado colaborativo: versão ajustada");
+  await expect(title).toHaveValue("Meu rascunho preservado");
+  await expect(
+    page.getByRole("button", { name: "Pedir ajuste", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Aplicar proposta ao rascunho" })
+    .click();
+  await expect(title).toHaveValue("Mercado colaborativo: versão ajustada");
+  await expect(proposal).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Revisado, publicar missão" }),
+  ).toBeDisabled();
+  await context.setOffline(false);
+  await expect(
+    page.getByText("Assistente disponível", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Revisado, publicar missão" }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: "Mercado colaborativo: versão ajustada",
+      exact: true,
+    }),
+  ).toBeVisible();
+});
+
+test("assistente desativado mantém pedido e editor disponíveis", async ({
+  page,
+}) => {
+  await page.route("**/api/v1/planning/assistant/status", (route) =>
+    route.fulfill({ json: { enabled: false } }),
+  );
+  await page.goto("/");
+  await teacherLogin(page);
+  await page.getByRole("button", { name: "Criar missão" }).click();
+  await expect(
+    page.getByText("Aguardando ativação", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Pedido para o assistente")
+    .fill("Pedido que fica preparado no aparelho.");
+  await expect(
+    page.getByRole("button", { name: "Criar com IA", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Título da missão", { exact: true })
+    .fill("Planejamento sem IA");
+  await expect(
+    page.getByLabel("Título da missão", { exact: true }),
+  ).toHaveValue("Planejamento sem IA");
+});

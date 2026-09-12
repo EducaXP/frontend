@@ -114,6 +114,12 @@ export interface Dashboard {
   awaitingReview: number;
   openHelpRequests: number;
 }
+export interface PlanningAssistant {
+  prompt: string;
+  resources: string;
+  history: { role: "user" | "assistant"; content: string }[];
+  proposal?: { reply: string; content: Content; baseContent: string };
+}
 export interface Workspace {
   user: User;
   authenticatedAt: number;
@@ -124,6 +130,7 @@ export interface Workspace {
   drafts: Record<string, Draft>;
   avatar?: Avatar;
   planning?: {
+    assistant?: PlanningAssistant;
     content: Content;
     missionId?: string;
     baseVersion?: number;

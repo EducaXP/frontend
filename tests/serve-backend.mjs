@@ -13,11 +13,44 @@ const { hashPassword, issueSession } = await import(
 const { planningTemplate } = await import(
   pathToFileURL(join(backendRoot, "dist/planning.js")).href
 );
+const { createPlanningAgent } = await import(
+  pathToFileURL(join(backendRoot, "dist/ai.js")).href
+);
 mkdirSync(".test-data", { recursive: true });
 const directory = mkdtempSync(resolve(".test-data/run-"));
 const { app, db } = await buildApp({
   databasePath: join(directory, "qa.db"),
   rateLimitMax: 5000,
+  // Exercise the real adapter; only its HTTP transport is simulated, with fictitious data.
+  planningAgent: createPlanningAgent(
+    {
+      provider: "openrouter",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "fixture/model",
+      apiKey: "test-only-key",
+    },
+    async (_url, init) => {
+      const context = JSON.parse(JSON.parse(init.body).messages[1].content);
+      const proposal = {
+        reply:
+          "Proposta simulada para teste: revise a investigação e a rubrica.",
+        content: {
+          ...planningTemplate({ ...context, theme: "preços de mercado" }),
+          title: context.history?.length
+            ? "Mercado colaborativo: versão ajustada"
+            : "Mercado colaborativo: proposta de teste",
+        },
+      };
+      return Response.json({
+        choices: [
+          {
+            finish_reason: "stop",
+            message: { content: JSON.stringify(proposal) },
+          },
+        ],
+      });
+    },
+  ),
 });
 const schoolId = randomUUID(),
   teacherId = randomUUID();
