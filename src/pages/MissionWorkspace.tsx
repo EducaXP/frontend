@@ -1,3 +1,4 @@
+import { QuestionAnswers } from "./Investigation";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -45,6 +46,14 @@ export default function MissionWorkspace({
     [loading, setLoading] = useState(true),
     [error, setError] = useState("");
   const teacher = data.user.role === "teacher";
+  const questions = mission.content.questions || [];
+  const complete =
+    !!draft &&
+    (questions.length
+      ? questions.every((q) =>
+          draft.answers?.some((a) => a.questionId === q.id && a.text.trim()),
+        )
+      : !!draft.evidence.trim());
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -113,7 +122,7 @@ export default function MissionWorkspace({
     })).catch(() => {});
   }
   async function submit() {
-    if (!draft?.evidence.trim()) return;
+    if (!complete) return;
     setError("");
     try {
       await update((current) => ({
@@ -256,11 +265,34 @@ export default function MissionWorkspace({
                   void submit();
                 }}
               >
+                {questions.length > 0 && (
+                  <>
+                    <p className="muted">
+                      Entreguem uma resposta para cada ponto-chave. Respostas
+                      registradas:{" "}
+                      {
+                        questions.filter((q) =>
+                          draft.answers?.some(
+                            (a) => a.questionId === q.id && a.text.trim(),
+                          ),
+                        ).length
+                      }
+                      /{questions.length}.
+                    </p>
+                    <QuestionAnswers
+                      questions={questions}
+                      answers={draft.answers}
+                      onChange={(answers) => edit({ answers })}
+                    />
+                  </>
+                )}
                 <label>
-                  Produção da equipe
+                  {questions.length
+                    ? "Anotações extras (opcional)"
+                    : "Produção da equipe"}
                   <textarea
                     aria-label="Produção da equipe"
-                    required
+                    required={!questions.length}
                     maxLength={12000}
                     rows={6}
                     placeholder="Contem o que investigaram e quais evidências apoiam a conclusão…"
@@ -294,6 +326,10 @@ export default function MissionWorkspace({
                           "Nenhuma entrega encontrada no servidor."}
                       </p>
                       <p>{draft.conflict?.reflection}</p>
+                      <QuestionAnswers
+                        questions={questions}
+                        answers={draft.conflict?.answers}
+                      />
                     </blockquote>
                     <div className="row wrap">
                       <button
@@ -352,7 +388,7 @@ export default function MissionWorkspace({
                   <button
                     className="button primary"
                     disabled={
-                      !draft.evidence.trim() ||
+                      !complete ||
                       saving ||
                       !!storageError ||
                       draft.status === "conflict" ||

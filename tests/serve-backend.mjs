@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
-
 const backendRoot = resolve(process.env.EDUCAXP_BACKEND_PATH || "../backend");
 const { buildApp } = await import(
   pathToFileURL(join(backendRoot, "dist/app.js")).href
@@ -18,8 +17,43 @@ const { createPlanningAgent } = await import(
 );
 mkdirSync(".test-data", { recursive: true });
 const directory = mkdtempSync(resolve(".test-data/run-"));
+const { Store } = await import(
+  pathToFileURL(join(backendRoot, "dist/db.js")).href
+);
+const { createRequire } = await import("node:module");
+const resolver = createRequire(join(backendRoot, "package.json"));
+const { PGlite } = await import(
+  pathToFileURL(resolver.resolve("@electric-sql/pglite")).href
+);
+const embedded = new PGlite(join(directory, "postgres"));
+let tail = Promise.resolve();
+const store = new Store({
+  async connect() {
+    const previous = tail;
+    let release;
+    tail = new Promise((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    return {
+      release,
+      async query(sql, values = []) {
+        if (!values.length && sql.includes(";")) {
+          const result = (await embedded.exec(sql)).at(-1);
+          return { rows: result?.rows || [], rowCount: result?.affectedRows };
+        }
+        const result = await embedded.query(sql, values);
+        return { rows: result.rows, rowCount: result.affectedRows };
+      },
+    };
+  },
+  async end() {
+    await embedded.close();
+  },
+});
+await store.migrate();
 const { app, db } = await buildApp({
-  databasePath: join(directory, "qa.db"),
+  store,
   rateLimitMax: 5000,
   // Exercise the real adapter; only its HTTP transport is simulated, with fictitious data.
   planningAgent: createPlanningAgent(
@@ -36,6 +70,17 @@ const { app, db } = await buildApp({
           "Proposta simulada para teste: revise a investigação e a rubrica.",
         content: {
           ...planningTemplate({ ...context, theme: "preços de mercado" }),
+          questions: (context.topics?.length
+            ? context.topics
+            : ["Porcentagem", "Comparação"]
+          ).map((topic, i) => ({
+            id: "q" + i,
+            topic,
+            prompt:
+              "Que evidência explica " +
+              topic +
+              "? Justifiquem com um exemplo.",
+          })),
           title: context.history?.length
             ? "Mercado colaborativo: versão ajustada"
             : "Mercado colaborativo: proposta de teste",
@@ -54,13 +99,13 @@ const { app, db } = await buildApp({
 });
 const schoolId = randomUUID(),
   teacherId = randomUUID();
-db.run(
-  "INSERT INTO schools VALUES(?,?)",
+await db.run(
+  "INSERT INTO schools VALUES($1,$2)",
   schoolId,
   "Escola de testes fictícia",
 );
-db.run(
-  "INSERT INTO users(id,school_id,role,name,login,password_hash) VALUES(?,?,?,?,?,?)",
+await db.run(
+  "INSERT INTO users(id,school_id,role,name,login,password_hash) VALUES($1,$2,$3,$4,$5,$6)",
   teacherId,
   schoolId,
   "teacher",
@@ -68,7 +113,7 @@ db.run(
   "qa.maria",
   await hashPassword("qa-password-123"),
 );
-const token = issueSession(db, teacherId, 12).token;
+const token = (await issueSession(db, teacherId, 12)).token;
 const send = async (path, payload, method = "POST") => {
   const response = await app.inject({
     method,

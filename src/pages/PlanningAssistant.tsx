@@ -60,6 +60,16 @@ export default function PlanningAssistantPanel({
   async function send() {
     if (!assistant.prompt.trim() || busy || !online || !enabled || disabled)
       return;
+    const topics = (assistant.topics || "")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (topics.length > 10 || topics.some((t) => t.length > 160)) {
+      setError(
+        "Use até dez tópicos, um por linha, com até 160 caracteres cada.",
+      );
+      return;
+    }
     const requestId = ++generation.current;
     const owner = data.user.id;
     const baseContent = JSON.stringify(planning.content);
@@ -81,6 +91,7 @@ export default function PlanningAssistantPanel({
           schoolYear: planning.content.schoolYear,
           durationMinutes: planning.content.durationMinutes,
           resources: assistant.resources,
+          topics,
           currentDraft,
           history: assistant.history.slice(-8),
         },
@@ -212,6 +223,19 @@ export default function PlanningAssistantPanel({
         nomes ou dados pessoais dos estudantes.
       </p>
       <label>
+        Tópicos da investigação (um por linha)
+        <textarea
+          rows={3}
+          maxLength={1600}
+          value={assistant.topics || ""}
+          disabled={busy}
+          onChange={(e) => edit({ topics: e.target.value })}
+          placeholder={
+            "Porcentagem\nDescontos sucessivos\nComparação de preços"
+          }
+        />
+      </label>
+      <label>
         Recursos disponíveis
         <textarea
           rows={2}
@@ -325,6 +349,15 @@ export default function PlanningAssistantPanel({
                     ? "Fora da tela"
                     : "Registro digital ou mediado"}
                 </small>
+              </li>
+            ))}
+          </ol>
+          <h3>Questões que a equipe deverá responder</h3>
+          <ol>
+            {assistant.proposal.content.questions?.map((q) => (
+              <li key={q.id}>
+                <strong>{q.topic}</strong>
+                <p>{q.prompt}</p>
               </li>
             ))}
           </ol>

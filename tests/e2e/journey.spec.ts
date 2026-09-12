@@ -442,6 +442,7 @@ test("assistente: proposta simulada, ajustes, revisão e recuperação offline",
   await page.getByRole("button", { name: "Criar missão" }).click();
   const title = page.getByLabel("Título da missão", { exact: true });
   await title.fill("Meu rascunho preservado");
+  await page.getByLabel("Tópicos da investigação (um por linha)").fill("Porcentagem\nComparação");
   await page
     .getByLabel("Recursos disponíveis")
     .fill("Um celular por equipe, papel e encartes de mercado.");
@@ -530,4 +531,132 @@ test("assistente desativado mantém pedido e editor disponíveis", async ({
   await expect(
     page.getByLabel("Título da missão", { exact: true }),
   ).toHaveValue("Planejamento sem IA");
+});
+
+test("investigação: perguntas, respostas offline e sugestão de feedback revisada", async ({
+  page,
+  browser,
+}) => {
+  await page.goto("/");
+  await teacherLogin(page);
+  await page.getByRole("button", { name: "Criar missão" }).click();
+  await page
+    .getByLabel("Título da missão", { exact: true })
+    .fill("Operação: o mistério das ofertas");
+  await page
+    .getByRole("button", { name: "Adicionar questão", exact: true })
+    .click();
+  await page
+    .getByLabel("Tópico da questão 1", { exact: true })
+    .fill("Porcentagem");
+  await page
+    .getByLabel("Pergunta 1", { exact: true })
+    .fill("Qual é o preço de R$ 100 com 20% de desconto? Expliquem o cálculo.");
+  await page
+    .getByRole("button", { name: "Adicionar questão", exact: true })
+    .click();
+  await page
+    .getByLabel("Tópico da questão 2", { exact: true })
+    .fill("Evidências");
+  await page
+    .getByLabel("Pergunta 2", { exact: true })
+    .fill("Como vocês conferiram se a oferta é vantajosa?");
+  await page.getByRole("button", { name: "Revisado, publicar missão" }).click();
+  const missionCard = page
+    .getByRole("article")
+    .filter({ hasText: "Operação: o mistério das ofertas" });
+  await expect(missionCard).toBeVisible();
+  const studentContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+  });
+  const student = await studentContext.newPage();
+  await student.goto("http://127.0.0.1:4185/");
+  await studentLogin(student);
+  const open = async () => {
+    await student
+      .getByRole("article")
+      .filter({ hasText: "Operação: o mistério das ofertas" })
+      .getByRole("button")
+      .click();
+    await expect(student.getByLabel("Resposta à questão 1")).toBeVisible();
+  };
+  await open();
+  await student
+    .getByLabel("Resposta à questão 1")
+    .fill("O preço final é R$ 80: calculamos 20% de 100 e subtraímos 20.");
+  await expect(
+    student.getByRole("button", { name: "Enviar produção", exact: true }),
+  ).toBeDisabled();
+  await student.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  await studentContext.setOffline(true);
+  await student
+    .getByLabel("Resposta à questão 2")
+    .fill("Comparamos o preço final com o preço de outra loja.");
+  await expect(
+    student.getByText("Salvo neste aparelho", { exact: true }),
+  ).toBeVisible();
+  await student.reload();
+  await studentLogin(student);
+  await open();
+  await expect(student.getByLabel("Resposta à questão 2")).toHaveValue(
+    "Comparamos o preço final com o preço de outra loja.",
+  );
+  await student
+    .getByRole("button", { name: "Guardar para enviar", exact: true })
+    .click();
+  await expect(
+    student.getByText("Aguardando envio", { exact: true }),
+  ).toBeVisible();
+  await studentContext.setOffline(false);
+  await expect(
+    student.getByText("Sincronizado", { exact: true }),
+  ).toBeVisible();
+  await expect(student.locator("body")).toHaveJSProperty("scrollWidth", 390);
+  await student.screenshot({
+    path: "test-results/investigation-mobile.png",
+    fullPage: true,
+  });
+  await missionCard.getByRole("button", { name: "Ver entregas" }).click();
+  await page.getByRole("button", { name: /Equipe Ipê.*Versão/ }).click();
+  await expect(
+    page.getByText("Comparamos o preço final com o preço de outra loja.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sugerir feedback", exact: true }),
+  ).toBeDisabled();
+  for (const select of await page.locator(".evaluation select").all())
+    await select.selectOption("1");
+  await page
+    .getByRole("button", { name: "Sugerir feedback", exact: true })
+    .click();
+  await expect(page.getByLabel("Sugestão de feedback")).toContainText(
+    "Revisem cada resposta",
+  );
+  await expect(page.getByLabel("Devolutiva para a equipe")).toHaveValue("");
+  await page
+    .getByRole("button", { name: "Usar sugestão na devolutiva" })
+    .click();
+  await page
+    .getByLabel("Devolutiva para a equipe")
+    .fill(
+      "Vocês justificaram o preço de R$ 80. Agora comparem também os preços por unidade.",
+    );
+  await page.getByRole("button", { name: "Publicar devolutiva" }).click();
+  await expect(
+    page.getByText("Avaliação publicada", { exact: true }),
+  ).toBeVisible();
+  await student.reload();
+  await studentLogin(student);
+  await open();
+  await expect(
+    student.getByText(
+      "Vocês justificaram o preço de R$ 80. Agora comparem também os preços por unidade.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await studentContext.close();
 });

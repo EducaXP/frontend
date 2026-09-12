@@ -18,6 +18,9 @@ export function queueDraft(draft: Draft, channel: Operation["channel"]): Draft {
       missionId: draft.missionId,
       groupId: draft.groupId,
       baseVersion: draft.baseVersion,
+      ...(draft.answers?.length
+        ? { answers: draft.answers.map((a) => ({ ...a })) }
+        : {}),
       evidence: draft.evidence,
       reflection: draft.reflection,
       completedSteps: [...draft.completedSteps],
@@ -33,6 +36,16 @@ export function applyReceipt(
   if (draft.pending?.operationId !== operationId) return draft;
   const sent = draft.pending;
   const unchanged =
+    JSON.stringify(
+      [...(draft.answers || [])].sort((a, b) =>
+        a.questionId.localeCompare(b.questionId),
+      ),
+    ) ===
+      JSON.stringify(
+        [...(sent.answers || [])].sort((a, b) =>
+          a.questionId.localeCompare(b.questionId),
+        ),
+      ) &&
     draft.evidence === sent.evidence &&
     draft.reflection === sent.reflection &&
     JSON.stringify([...draft.completedSteps].sort()) ===
@@ -55,6 +68,7 @@ export function fromSubmission(submission: Submission): Draft {
     groupId: submission.groupId,
     submissionId: submission.id,
     baseVersion: submission.version,
+    answers: submission.answers,
     evidence: submission.evidence,
     reflection: submission.reflection,
     completedSteps: submission.completedSteps,
@@ -76,4 +90,9 @@ export function emptyDraft(missionId: string, groupId: string): Draft {
 export const hasWork = (draft: Draft) =>
   !!draft.pending ||
   (draft.status !== "synced" &&
-    !!(draft.evidence || draft.reflection || draft.completedSteps.length));
+    !!(
+      draft.evidence ||
+      draft.reflection ||
+      draft.completedSteps.length ||
+      draft.answers?.some((a) => a.text.trim())
+    ));

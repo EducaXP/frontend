@@ -32,6 +32,8 @@ import type {
 import { Badge, Empty, ErrorText, Modal, PageTitle } from "../ui";
 import { template } from "../template";
 import MissionWorkspace from "./MissionWorkspace";
+import { QuestionEditor, QuestionAnswers } from "./Investigation";
+import FeedbackSuggestion from "./FeedbackSuggestion";
 import PlanningAssistantPanel from "./PlanningAssistant";
 
 export default function Teacher({ path }: { path: string }) {
@@ -653,6 +655,10 @@ function Editor({ initial }: { initial?: Mission }) {
           void save(true);
         }}
       >
+        <QuestionEditor
+          questions={content.questions || []}
+          onChange={(questions) => change({ questions })}
+        />
         <section className="card">
           <div className="section-heading">
             <h2>1. Uma pergunta para começar</h2>
@@ -1127,6 +1133,12 @@ function Review({ mission }: { mission: Mission }) {
                     : `Revisando versão ${selected.version}`}
                 </Badge>
               </div>
+              {!!mission.content.questions?.length && (
+                <QuestionAnswers
+                  questions={mission.content.questions}
+                  answers={selected.answers}
+                />
+              )}
               <h3>Produção da equipe</h3>
               <blockquote className="evidence-text">
                 {selected.evidence}
@@ -1159,6 +1171,28 @@ function Review({ mission }: { mission: Mission }) {
                   </select>
                 </label>
               ))}
+              {!selected.evaluation && (
+                <FeedbackSuggestion
+                  key={
+                    selected.id +
+                    ":" +
+                    selected.version +
+                    ":" +
+                    JSON.stringify(scores)
+                  }
+                  content={mission.content}
+                  scores={scores}
+                  onApply={(text) => {
+                    if (
+                      !feedback.trim() ||
+                      window.confirm(
+                        "Substituir o texto da devolutiva pela sugestão?",
+                      )
+                    )
+                      setFeedback(text);
+                  }}
+                />
+              )}
               <label>
                 Devolutiva para a equipe
                 <textarea

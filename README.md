@@ -63,7 +63,7 @@ O acesso local expira após sete dias da última autenticação online. Limpeza 
 
 Veja [origem dos assets](docs/assets.md). Logo e avatar são servidos localmente; fontes usam a família do sistema, sem downloads externos. A imagem do avatar (~1,29 MB) só é solicitada ao abrir sua tela e então fica em cache público. O avatar possui alternativa visual sem imagem se ela não estiver disponível.
 
-Orçamento inicial: precache estático inferior a 600 KiB e JavaScript principal inferior a 100 kB gzip. Na compilação validada: ~465 KiB de precache, ~83 kB gzip no JavaScript principal e ~9,5 kB gzip no CSS. Telas de aluno, professor e produção são divididas em módulos. Esses números não são medições de velocidade em aparelhos de entrada.
+Orçamento inicial: precache estático inferior a 600 KiB e JavaScript principal inferior a 100 kB gzip. Na compilação validada: ~471 KiB de precache, ~83 kB gzip no JavaScript principal e ~9,5 kB gzip no CSS. Telas de aluno, professor e produção são divididas em módulos. Esses números não são medições de velocidade em aparelhos de entrada.
 
 ## Verificação
 
@@ -71,7 +71,7 @@ Orçamento inicial: precache estático inferior a 600 KiB e JavaScript principal
 npm run check
 ```
 
-Executa testes unitários do armazenamento/fila, verificação TypeScript e build. Para testes de navegador com API e SQLite reais, compile o backend primeiro e então execute:
+Executa testes unitários do armazenamento/fila, verificação TypeScript e build. Para testes de navegador com API real e mecanismo PostgreSQL embarcado, compile o backend primeiro e então execute:
 
 ```powershell
 npm run test:e2e
@@ -83,3 +83,10 @@ Os testes cobrem recarga offline, reconexão sem novo login, renovação de sess
 
 Limites adicionais: evidências textuais, composição fixa dos grupos, ausência de upload de mídia, push e gestão escolar. A qualidade das propostas de IA ainda precisa de validação com modelo real e revisão pedagógica. Ainda é necessário validar iOS/Safari, Android de entrada, persistência sob pressão de espaço e uso em escola real.
 `overrides.vitest.vite` mantém o executor de testes na mesma versão compatível de Vite da aplicação, evitando uma segunda cadeia de ferramentas durante a resolução das dependências.
+
+
+## Investigações e feedback
+
+Informe os tópicos no assistente, revise as questões propostas e aplique ao editor. Também é possível criar perguntas manualmente em **Pontos-chave da investigação**. Estudantes respondem cada pergunta, com rascunhos offline e envio somente quando todas têm resposta. Missões sem questões mantêm a produção em texto livre.
+
+Na correção, marque os níveis da rubrica e use **Sugerir feedback**. A sugestão é local, baseada nos níveis escolhidos; não é análise automática das respostas por IA. Revise, acrescente exemplos e aplique ao campo de devolutiva antes de publicar. Veja [contratos e compatibilidade](../docs/decisions/0004-investigacao-e-feedback.md).

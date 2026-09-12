@@ -21,7 +21,17 @@ export interface Criterion {
   title: string;
   levels: string[];
 }
+export interface Question {
+  id: string;
+  topic: string;
+  prompt: string;
+}
+export interface Answer {
+  questionId: string;
+  text: string;
+}
 export interface Content {
+  questions?: Question[];
   title: string;
   objective: string;
   subject: string;
@@ -51,6 +61,7 @@ export interface Evaluation {
   scores: { criterionId: string; level: number }[];
 }
 export interface Submission {
+  answers?: Answer[];
   id: string;
   missionId: string;
   groupId: string;
@@ -63,6 +74,7 @@ export interface Submission {
   evaluation?: Evaluation | null;
 }
 export interface Operation {
+  answers?: Answer[];
   operationId: string;
   submissionId: string;
   missionId: string;
@@ -74,6 +86,7 @@ export interface Operation {
   channel: "digital" | "teacher_mediated";
 }
 export interface Draft {
+  answers?: Answer[];
   missionId: string;
   groupId: string;
   submissionId: string;
@@ -115,6 +128,7 @@ export interface Dashboard {
   openHelpRequests: number;
 }
 export interface PlanningAssistant {
+  topics?: string;
   prompt: string;
   resources: string;
   history: { role: "user" | "assistant"; content: string }[];
