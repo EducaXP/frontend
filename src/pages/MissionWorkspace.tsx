@@ -1,3 +1,4 @@
+import FocusPanel from "./FocusPanel";
 import { QuestionAnswers } from "./Investigation";
 import { useEffect, useState } from "react";
 import {
@@ -105,7 +106,7 @@ export default function MissionWorkspace({
     return () => {
       cancelled = true;
     };
-  }, [mission.id, group.id, token, online, update]);
+  }, [mission.id, group.id, token, online, update, data.updatedAt]);
   function edit(patch: Partial<Draft>) {
     void update((current) => ({
       ...current,
@@ -169,6 +170,7 @@ export default function MissionWorkspace({
       />
       <div className="detail-layout">
         <section className="stack">
+          <FocusPanel mission={mission} group={group} />
           <article className="card mission-intro">
             <div className="row wrap">
               <Badge>{mission.content.subject}</Badge>

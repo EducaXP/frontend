@@ -982,7 +982,7 @@ function Review({ mission }: { mission: Mission }) {
     return () => {
       active = false;
     };
-  }, [mission.id, token, online]);
+  }, [mission.id, token, online, data.updatedAt]);
   async function select(submission: Submission) {
     setBusy(true);
     setError("");
@@ -1042,6 +1042,16 @@ function Review({ mission }: { mission: Mission }) {
         title="Entregas e devolutivas"
       />
       <p className="subtitle">{mission.content.title}</p>
+      {selected &&
+        submissions.some(
+          (s) => s.id === selected.id && s.version !== selected.version,
+        ) && (
+          <div className="alert warning">
+            A equipe enviou uma nova versão. Sua devolutiva em edição foi
+            mantida; selecione a entrega atualizada para revisá-la antes de
+            publicar.
+          </div>
+        )}
       <ErrorText error={error} />
       <div className="record-toolbar card">
         <div>
@@ -1072,6 +1082,21 @@ function Review({ mission }: { mission: Mission }) {
       </div>
       <div className="review-layout">
         <section className="stack">
+          {(data.focusRecords || [])
+            .filter((r) => r.missionId === mission.id)
+            .map((r) => (
+              <article className="card" key={r.groupId}>
+                <Badge tone="success">+25 XP · COMBINADO DE FOCO</Badge>
+                <h3>{data.groups.find((g) => g.id === r.groupId)?.name}</h3>
+                <p>
+                  <strong>Objetivo:</strong> {r.goal}
+                </p>
+                <p>
+                  <strong>Estratégia:</strong> {r.strategy}
+                </p>
+                <p>{r.reflection}</p>
+              </article>
+            ))}
           <h2>
             Produções recebidas{" "}
             <span className="counter">{submissions.length}</span>
@@ -1154,7 +1179,7 @@ function Review({ mission }: { mission: Mission }) {
                   {c.title}
                   <select
                     required
-                    disabled={!!selected.evaluation}
+                    disabled={busy || !!selected.evaluation}
                     value={scores[c.id] ?? ""}
                     onChange={(e) =>
                       setScores({ ...scores, [c.id]: Number(e.target.value) })
@@ -1171,7 +1196,7 @@ function Review({ mission }: { mission: Mission }) {
                   </select>
                 </label>
               ))}
-              {!selected.evaluation && (
+              {!selected.evaluation && !busy && (
                 <FeedbackSuggestion
                   key={
                     selected.id +
@@ -1199,13 +1224,13 @@ function Review({ mission }: { mission: Mission }) {
                   required
                   maxLength={4000}
                   rows={4}
-                  disabled={!!selected.evaluation}
+                  disabled={busy || !!selected.evaluation}
                   value={feedback}
                   onChange={(e) => setFeedback(e.target.value)}
                   placeholder="Reconheça os avanços e indique um próximo passo…"
                 />
               </label>
-              {!selected.evaluation && (
+              {!selected.evaluation && !busy && (
                 <>
                   <label className="check-label">
                     <input
@@ -1261,9 +1286,9 @@ function GroupsPage() {
     } | null>(null),
     [members, setMembers] = useState<Record<string, string>>({});
   const [rotating, setRotating] = useState<Group | null>(null);
+  useEffect(() => setMembers({}), [data.selectedClass]);
   useEffect(() => {
     let active = true;
-    setMembers({});
     if (online && data.selectedClass)
       void list<{ id: string; name: string; alias: string }>(
         `/classrooms/${data.selectedClass}/students`,

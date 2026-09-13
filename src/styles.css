@@ -3046,15 +3046,189 @@ blockquote {
   z-index: 1;
 }
 
-.assistant-panel { margin-bottom: 24px; }
-.assistant-panel h2 { margin-bottom: 4px; }
-.assistant-panel .row > div { min-width: 0; }
-.assistant-conversation { display: grid; gap: 12px; margin: 20px 0; max-height: 350px; overflow-y: auto; }
-.assistant-message { padding: 14px 18px; border-radius: 14px; background: #f0f5fb; }
-.assistant-message.user { background: #edf1ff; margin-left: 24px; }
-.assistant-message p, .assistant-proposal p { white-space: pre-wrap; overflow-wrap: anywhere; }
-.assistant-message p { margin-bottom: 0; }
-.assistant-proposal { margin-top: 24px; padding: 22px; border: 1px solid #d4cff1; border-radius: 16px; background: #fcfbff; }
-.assistant-proposal > h3 { font-size: 18px; margin-top: 22px; }
-.assistant-proposal > ol > li { padding: 8px 0; }
-@media (max-width: 640px) { .assistant-proposal { padding: 14px; } .assistant-panel .round-icon { display: none; } }
+.assistant-panel {
+  margin-bottom: 24px;
+}
+.assistant-panel h2 {
+  margin-bottom: 4px;
+}
+.assistant-panel .row > div {
+  min-width: 0;
+}
+.assistant-conversation {
+  display: grid;
+  gap: 12px;
+  margin: 20px 0;
+  max-height: 350px;
+  overflow-y: auto;
+}
+.assistant-message {
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #f0f5fb;
+}
+.assistant-message.user {
+  background: #edf1ff;
+  margin-left: 24px;
+}
+.assistant-message p,
+.assistant-proposal p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assistant-message p {
+  margin-bottom: 0;
+}
+.assistant-proposal {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid #d4cff1;
+  border-radius: 16px;
+  background: #fcfbff;
+}
+.assistant-proposal > h3 {
+  font-size: 18px;
+  margin-top: 22px;
+}
+.assistant-proposal > ol > li {
+  padding: 8px 0;
+}
+@media (max-width: 640px) {
+  .assistant-proposal {
+    padding: 14px;
+  }
+  .assistant-panel .round-icon {
+    display: none;
+  }
+}
+
+/* Focus card follows the blue/green, rounded timer composition from Stitch. */
+.focus-card {
+  background: linear-gradient(120deg, #087fa7, #0861a5);
+  color: white;
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 24px #0861a51a;
+}
+.focus-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+.focus-bonus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 20px;
+  background: #ffe08a;
+  color: #513b05;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+.focus-summary {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: 22px 0;
+}
+.focus-summary h2 {
+  font-size: 22px;
+  margin: 0 0 6px;
+}
+.focus-summary p {
+  margin: 0 0 6px;
+}
+.focus-summary small {
+  color: #ecf8ff;
+}
+.focus-clock {
+  width: 124px;
+  min-width: 124px;
+  height: 124px;
+  border: 7px solid #70ecc1;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.focus-clock small {
+  font-size: 11px;
+  font-weight: 500;
+}
+.focus-note {
+  background: #003f6a55;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.focus-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+.focus-form label {
+  color: white;
+}
+.focus-form input,
+.focus-form textarea,
+.focus-form select {
+  background: white;
+  color: #24344b;
+  opacity: 1;
+}
+.focus-form .row {
+  align-items: end;
+}
+.focus-form .row label {
+  margin: 0;
+}
+.focus-earned {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-weight: 700;
+}
+.focus-card .error {
+  background: white;
+  color: #9d2929;
+}
+@media (max-width: 600px) {
+  .focus-card {
+    padding: 18px;
+  }
+  .focus-summary {
+    gap: 14px;
+    align-items: flex-start;
+  }
+  .focus-clock {
+    width: 92px;
+    min-width: 92px;
+    height: 92px;
+    font-size: 24px;
+    border-width: 5px;
+  }
+  .focus-summary h2 {
+    font-size: 18px;
+  }
+  .focus-summary p {
+    font-size: 13px;
+  }
+  .focus-summary small {
+    font-size: 12px;
+  }
+  .focus-bonus {
+    font-size: 11px;
+  }
+  .focus-card .row {
+    gap: 12px;
+  }
+}

@@ -90,3 +90,11 @@ Limites adicionais: evidências textuais, composição fixa dos grupos, ausênci
 Informe os tópicos no assistente, revise as questões propostas e aplique ao editor. Também é possível criar perguntas manualmente em **Pontos-chave da investigação**. Estudantes respondem cada pergunta, com rascunhos offline e envio somente quando todas têm resposta. Missões sem questões mantêm a produção em texto livre.
 
 Na correção, marque os níveis da rubrica e use **Sugerir feedback**. A sugestão é local, baseada nos níveis escolhidos; não é análise automática das respostas por IA. Revise, acrescente exemplos e aplique ao campo de devolutiva antes de publicar. Veja [contratos e compatibilidade](../docs/decisions/0004-investigacao-e-feedback.md).
+
+
+## Foco e atualização online
+
+O combinado e a reflexão da equipe concedem 25 XP por integrante, uma vez por missão, inclusive por registro mediado. O cronômetro é opcional e não mede atenção. Com conexão, mudanças chegam por SSE após a confirmação no PostgreSQL e aparecem sem recarregar a página, preservando rascunhos. Veja [regras, persistência, implantação e limites](../docs/decisions/0006-foco-e-atualizacoes.md).
+
+
+A atualização online atual usa [SSE e LISTEN/NOTIFY](../docs/decisions/0007-sse.md), com reconexão automática. Publique o backend (migração 3) antes de atualizar o frontend/PWA. Não é necessário configurar webhook ou WebSocket.

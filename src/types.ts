@@ -134,7 +134,32 @@ export interface PlanningAssistant {
   history: { role: "user" | "assistant"; content: string }[];
   proposal?: { reply: string; content: Content; baseContent: string };
 }
+export interface FocusRecord {
+  missionId: string;
+  groupId: string;
+  goal: string;
+  strategy: string;
+  reflection: string;
+  channel: "digital" | "teacher_mediated";
+}
+export interface FocusOperation extends FocusRecord {
+  operationId: string;
+}
+export interface FocusDraft {
+  goal: string;
+  strategy: string;
+  reflection: string;
+  remaining: number;
+  endsAt?: number;
+  status: "local" | "queued" | "synced" | "error";
+  pending?: FocusOperation;
+  error?: string;
+  retryAt?: number;
+  attempts?: number;
+}
 export interface Workspace {
+  focus?: Record<string, FocusDraft>;
+  focusRecords?: FocusRecord[];
   user: User;
   authenticatedAt: number;
   classrooms: Classroom[];

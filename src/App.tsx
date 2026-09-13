@@ -33,6 +33,7 @@ import type {
   Classroom,
   Credentials,
   Group,
+  FocusRecord,
   Mission,
   Submission,
   User,
@@ -41,11 +42,14 @@ import type {
 import { Badge, Brand, ErrorText, MissionArt, Modal } from "./ui";
 import { Vault } from "./vault";
 import type { SessionAccess } from "./session-access";
+import { listenUpdates } from "./live";
+import { hasFocusWork } from "./focus";
 import { prepareAccess } from "./prepare-access";
 
 const Student = lazy(() => import("./pages/Student"));
 const Teacher = lazy(() => import("./pages/Teacher"));
 interface Session {
+  revision?: string;
   release?: () => void;
   id: string;
   token: string | null;
@@ -261,8 +265,10 @@ export default function App() {
     [saving, setSaving] = useState(false),
     [storageError, setStorageError] = useState("");
   const [accessError, setAccessError] = useState("");
+  const [liveError, setLiveError] = useState("");
   const [leave, setLeave] = useState(false),
     [install, setInstall] = useState<InstallEvent | null>(null);
+  const refreshSequence = useRef(0);
   const syncing = useRef(false),
     saves = useRef(0),
     mounted = useRef(true);
@@ -310,7 +316,8 @@ export default function App() {
         (ref.current &&
           !ref.current.vault &&
           (Object.values(ref.current.data.drafts).some(hasWork) ||
-            !!ref.current.data.planning))
+            !!ref.current.data.planning ||
+            hasFocusWork(ref.current.data) > 0))
       ) {
         event.preventDefault();
         event.returnValue = "";
@@ -351,13 +358,14 @@ export default function App() {
           "REAUTHENTICATE",
           "Aguardando conexão para atualizar seu espaço.",
         );
+      const sequence = ++refreshSequence.current;
       const classrooms = await list<Classroom>("/classrooms", current.token);
       const selectedClass =
         classrooms.find((c) => c.id === (classId || current.data.selectedClass))
           ?.id ||
         classrooms[0]?.id ||
         "";
-      const [missions, groups, avatar] = await Promise.all([
+      const [missions, groups, avatar, focusRecords] = await Promise.all([
         selectedClass
           ? list<Mission>(
               `/classrooms/${selectedClass}/missions`,
@@ -370,8 +378,18 @@ export default function App() {
         current.data.user.role === "student"
           ? api<Avatar>("/me/avatar", current.token)
           : undefined,
+        selectedClass
+          ? list<FocusRecord>(
+              `/classrooms/${selectedClass}/focus`,
+              current.token,
+            )
+          : [],
       ]);
-      if (ref.current?.id !== current.id) return;
+      if (
+        ref.current?.id !== current.id ||
+        sequence !== refreshSequence.current
+      )
+        return;
       await update((data) => ({
         ...data,
         classrooms,
@@ -379,6 +397,7 @@ export default function App() {
         missions,
         groups,
         avatar,
+        focusRecords,
         updatedAt: Date.now(),
       }));
     },
@@ -510,6 +529,85 @@ export default function App() {
           break;
         }
       }
+      if (ref.current?.id !== current.id) return;
+      for (const [key, focus] of Object.entries(ref.current.data.focus || {})) {
+        if (
+          !focus.pending ||
+          focus.status !== "queued" ||
+          (focus.retryAt || 0) > Date.now()
+        )
+          continue;
+        const operation = focus.pending;
+        try {
+          const result = await api<{ record: FocusRecord }>(
+            "/sync/focus",
+            current.token,
+            "POST",
+            operation,
+          );
+          if (ref.current?.id !== current.id) return;
+          await update((data) => {
+            const live = data.focus?.[key];
+            if (live?.pending?.operationId !== operation.operationId)
+              return data;
+            return {
+              ...data,
+              focus: {
+                ...data.focus,
+                [key]: {
+                  ...live,
+                  status: "synced",
+                  pending: undefined,
+                  error: undefined,
+                },
+              },
+              focusRecords: [
+                ...(data.focusRecords || []).filter(
+                  (r) =>
+                    r.missionId !== operation.missionId ||
+                    r.groupId !== operation.groupId,
+                ),
+                result.record,
+              ],
+            };
+          });
+          notice("Combinado registrado. A equipe recebeu o bônus de foco.");
+        } catch (error) {
+          if (ref.current?.id !== current.id) return;
+          if (!(error instanceof ApiError)) throw error;
+          const transient =
+            error.status === 0 ||
+            error.status === 401 ||
+            error.status === 429 ||
+            error.status >= 500;
+          await update((data) => {
+            const live = data.focus?.[key];
+            if (live?.pending?.operationId !== operation.operationId)
+              return data;
+            const attempts = (live.attempts || 0) + 1;
+            return {
+              ...data,
+              focus: {
+                ...data.focus,
+                [key]: {
+                  ...live,
+                  status: transient ? "queued" : "error",
+                  error: error.message,
+                  attempts,
+                  retryAt:
+                    Date.now() +
+                    Math.max(
+                      error.retryAfter * 1000,
+                      Math.min(60000, 2000 * 2 ** Math.min(attempts, 5)),
+                    ),
+                },
+              },
+            };
+          });
+          if (error.status === 401) current.access.invalidate(current.token);
+          break;
+        }
+      }
     } catch (error) {
       if (ref.current?.id === current?.id) notice(message(error));
     } finally {
@@ -521,6 +619,53 @@ export default function App() {
     const interval = setInterval(() => void sync(), 5000);
     return () => clearInterval(interval);
   }, [sync, online, session?.id]);
+
+  useEffect(() => {
+    const active = ref.current;
+    if (!online || !active?.token) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined,
+      attempts = 0;
+    const token = active.token;
+    async function connect() {
+      const started = Date.now();
+      try {
+        await listenUpdates(token, controller.signal, async (revision) => {
+          if (controller.signal.aborted || ref.current?.id !== active!.id)
+            return;
+          if (ref.current.revision !== revision) {
+            await refresh();
+            if (controller.signal.aborted || ref.current?.id !== active!.id)
+              return;
+            const next = { ...ref.current, revision };
+            ref.current = next;
+            setSession(next);
+          }
+          setLiveError("");
+        });
+      } catch (error) {
+        if (controller.signal.aborted || ref.current?.id !== active!.id) return;
+        setLiveError(
+          "A conexão ao vivo foi interrompida. Reconectaremos automaticamente; seu trabalho permanece nesta tela.",
+        );
+        if (error instanceof ApiError && error.status === 401) {
+          active!.access.invalidate(token);
+          void sync();
+        }
+        if (Date.now() - started > 20000) attempts = 0;
+        const delay = Math.max(
+          error instanceof ApiError ? error.retryAfter * 1000 : 0,
+          Math.min(30000, 1000 * 2 ** Math.min(attempts++, 5)),
+        );
+        timer = setTimeout(() => void connect(), delay);
+      }
+    }
+    void connect();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [online, session?.id, session?.token, refresh, sync]);
 
   async function login(credentials: Credentials, prepare: boolean) {
     const { access, authenticated, local, user } = await prepareAccess(
@@ -559,6 +704,7 @@ export default function App() {
       access.close();
       throw error;
     }
+    setLiveError("");
     ref.current = next;
     setSession(next);
     setStorageError("");
@@ -603,7 +749,8 @@ export default function App() {
   const teacher = session.data.user.role === "teacher";
   const pending =
     Object.values(session.data.drafts).filter(hasWork).length +
-    (session.data.planning ? 1 : 0);
+    (session.data.planning ? 1 : 0) +
+    hasFocusWork(session.data);
   const links = teacher
     ? [
         { path: "/", label: "Visão da turma", icon: LayoutDashboard },
@@ -767,6 +914,7 @@ export default function App() {
             )}
             <ErrorText error={storageError} />
             <ErrorText error={accessError} />
+            {connection && <ErrorText error={liveError} />}
             {needRefresh && (
               <div className="alert">
                 <Download size={18} />

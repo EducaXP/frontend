@@ -19,6 +19,7 @@ import { useApp } from "../context";
 import { api, list } from "../api";
 import type { Avatar, Help } from "../types";
 import { Badge, Empty, ErrorText, MissionArt, PageTitle } from "../ui";
+import FocusPanel from "./FocusPanel";
 import MissionWorkspace from "./MissionWorkspace";
 
 export default function Student({ path }: { path: string }) {
@@ -56,6 +57,9 @@ export default function Student({ path }: { path: string }) {
           <Leaf size={20} /> A turma está em uma pausa combinada. Aproveite para
           conversar e descansar os olhos.
         </div>
+      )}
+      {group && missions[0] && (
+        <FocusPanel mission={missions[0]} group={group} />
       )}
       <section className="student-hero">
         <div>
@@ -245,7 +249,7 @@ function TeamPage() {
     return () => {
       active = false;
     };
-  }, [token, online, data.selectedClass]);
+  }, [token, online, data.selectedClass, data.updatedAt]);
   return (
     <>
       <PageTitle label="NINGUÉM APRENDE SOZINHO" title="Minha equipe" />

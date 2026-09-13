@@ -28,6 +28,7 @@ const { PGlite } = await import(
 const embedded = new PGlite(join(directory, "postgres"));
 let tail = Promise.resolve();
 const store = new Store({
+  listen: (changed) => embedded.listen("educaxp_changes", changed),
   async connect() {
     const previous = tail;
     let release;
@@ -137,6 +138,8 @@ const lucas = await send(`/classrooms/${classroom.id}/students`, {
   name: "Lucas",
   alias: "lucas",
 });
+const caio = await send(`/classrooms/${classroom.id}/students`, {name:"Caio",alias:"caio"});
+await send(`/classrooms/${classroom.id}/groups`, {name:"Equipe Cedro",members:[{studentId:caio.id,role:"Investigar"}]});
 const group = await send(`/classrooms/${classroom.id}/groups`, {
   name: "Equipe Ipê",
   members: [
@@ -170,6 +173,7 @@ writeFileSync(
     enzo,
     bia,
     lucas,
+    caio,
     group,
     mission,
   }),
