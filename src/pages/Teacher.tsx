@@ -582,10 +582,12 @@ function Editor({ initial }: { initial?: Mission }) {
     })).catch(() => {});
   }
   async function save(publish: boolean) {
-    if (assistantBusy || busy || saving || storageError || !online) return;
+    if (assistantBusy || busy || storageError || !online) return;
     setBusy(true);
     setError("");
     try {
+      // Await the local write queue without disabling actions during background refreshes.
+      await update((current) => ({ ...current }));
       const mission = planning!.missionId
         ? await api<Mission>(`/missions/${planning!.missionId}`, token, "PUT", {
             baseVersion: planning!.baseVersion,
@@ -932,9 +934,7 @@ function Editor({ initial }: { initial?: Mission }) {
           <button
             type="button"
             className="button secondary"
-            disabled={
-              assistantBusy || busy || !online || saving || !!storageError
-            }
+            disabled={assistantBusy || busy || !online || !!storageError}
             onClick={(e) => {
               if (e.currentTarget.form?.reportValidity()) void save(false);
             }}
@@ -943,9 +943,7 @@ function Editor({ initial }: { initial?: Mission }) {
           </button>
           <button
             className="button primary"
-            disabled={
-              assistantBusy || busy || !online || saving || !!storageError
-            }
+            disabled={assistantBusy || busy || !online || !!storageError}
           >
             <Send size={17} />{" "}
             {busy ? "Salvando…" : "Revisado, publicar missão"}

@@ -106,3 +106,69 @@ describe("retomada automática de acesso", () => {
     expect(mockApi).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("token restaurado", () => {
+  const snapshot = () => ({
+    expectedUserId: user.id,
+    authenticated: {
+      token: "restored-token",
+      expiresAt: Date.now() + 60000,
+      user: { ...user, role: "student" as const },
+    },
+  });
+  it("valida o token no servidor sem enviar novamente PIN ou senha", async () => {
+    const access = SessionAccess.restore(snapshot());
+    mockApi.mockResolvedValueOnce(user);
+    expect((await access.ensure())?.token).toBe("restored-token");
+    expect(mockApi).toHaveBeenCalledExactlyOnceWith(
+      "/me",
+      "restored-token",
+      "GET",
+      undefined,
+      4000,
+    );
+    expect(access.snapshot().offlineCredentials).toBeUndefined();
+  });
+  it("mantém o token após falha de rede e revalida ao reconectar", async () => {
+    const access = SessionAccess.restore(snapshot());
+    mockApi.mockRejectedValueOnce(new ApiError(0, "NETWORK_ERROR", "Sem rede"));
+    expect(await access.ensure()).toBeNull();
+    expect(access.blocked).toBe(false);
+    await vi.advanceTimersByTimeAsync(5000);
+    mockApi.mockResolvedValueOnce(user);
+    expect((await access.ensure())?.token).toBe("restored-token");
+    expect(mockApi.mock.calls.every(([path]) => path === "/me")).toBe(true);
+  });
+  it("bloqueia token revogado e resposta de outro perfil sem renovar por senha", async () => {
+    for (const outcome of [
+      new ApiError(401, "UNAUTHORIZED", "Revogado"),
+      { ...user, id: "other" },
+    ]) {
+      mockApi.mockReset();
+      const access = SessionAccess.restore(snapshot());
+      if (outcome instanceof Error) mockApi.mockRejectedValueOnce(outcome);
+      else mockApi.mockResolvedValueOnce(outcome);
+      expect(await access.ensure()).toBeNull();
+      expect(access.blocked).toBe(true);
+      expect(await access.ensure()).toBeNull();
+      expect(mockApi).toHaveBeenCalledTimes(1);
+    }
+  });
+  it("exige novo login ao expirar e remove a credencial do snapshot após autenticar", async () => {
+    const expired = snapshot();
+    expired.authenticated.expiresAt = Date.now() - 1;
+    const access = SessionAccess.restore(expired);
+    expect(await access.ensure()).toBeNull();
+    expect(access.blocked).toBe(true);
+    expect(mockApi).not.toHaveBeenCalled();
+    const offline = SessionAccess.restore({
+      expectedUserId: user.id,
+      offlineCredentials: credentials,
+    });
+    expect(offline.snapshot().offlineCredentials).toEqual(credentials);
+    allow();
+    await offline.ensure();
+    expect(offline.snapshot().offlineCredentials).toBeUndefined();
+    expect(offline.snapshot().authenticated?.token).toBe("token-one");
+  });
+});

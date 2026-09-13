@@ -35,9 +35,15 @@ async function derive(secret: string, salt: Uint8Array<ArrayBuffer>) {
     { name: "PBKDF2", hash: "SHA-256", salt, iterations: 210000 },
     material,
     { name: "AES-GCM", length: 256 },
-    false,
+    true,
     ["encrypt", "decrypt"],
   );
+}
+export interface VaultAccess {
+  id: string;
+  profileId: string;
+  salt: number[];
+  key: number[];
 }
 export class Vault {
   private chain: Promise<unknown> = Promise.resolve();
@@ -115,6 +121,46 @@ export class Vault {
       vault: new Vault(id, key, salt, profileId),
       preserved: entries.length > 0,
     };
+  }
+  async exportAccess(): Promise<VaultAccess> {
+    return {
+      id: this.id,
+      profileId: this.profileId,
+      salt: [...this.salt],
+      key: [...new Uint8Array(await crypto.subtle.exportKey("raw", this.key))],
+    };
+  }
+  static async restore(access: VaultAccess) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new Uint8Array(access.key),
+      "AES-GCM",
+      true,
+      ["encrypt", "decrypt"],
+    );
+    return new Vault(
+      access.id,
+      key,
+      new Uint8Array(access.salt),
+      access.profileId,
+    );
+  }
+  async read(): Promise<Workspace> {
+    const db = await database();
+    let saved: Envelope | undefined;
+    try {
+      saved = await db.get("vaults", this.id);
+    } finally {
+      db.close();
+    }
+    if (!saved)
+      throw new Error("O conteúdo local deste acesso não está disponível.");
+    const bytes = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: saved.iv },
+      this.key,
+      saved.ciphertext,
+    );
+    return JSON.parse(new TextDecoder().decode(bytes)) as Workspace;
   }
   save(workspace: Workspace) {
     // Snapshot immediately, then serialize writes so slow encryption never overwrites a later edit.

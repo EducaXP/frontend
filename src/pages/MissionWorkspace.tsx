@@ -45,6 +45,7 @@ export default function MissionWorkspace({
     draft = data.drafts[key];
   const [remote, setRemote] = useState<Submission | null>(null),
     [loading, setLoading] = useState(true),
+    [submitting, setSubmitting] = useState(false),
     [error, setError] = useState("");
   const teacher = data.user.role === "teacher";
   const questions = mission.content.questions || [];
@@ -123,7 +124,8 @@ export default function MissionWorkspace({
     })).catch(() => {});
   }
   async function submit() {
-    if (!complete) return;
+    if (!complete || submitting) return;
+    setSubmitting(true);
     setError("");
     try {
       await update((current) => ({
@@ -145,6 +147,8 @@ export default function MissionWorkspace({
       setError(
         "Não foi possível salvar a entrega. Mantenha esta tela aberta e copie seu texto antes de sair.",
       );
+    } finally {
+      setSubmitting(false);
     }
   }
   const statuses = {
@@ -391,7 +395,7 @@ export default function MissionWorkspace({
                     className="button primary"
                     disabled={
                       !complete ||
-                      saving ||
+                      submitting ||
                       !!storageError ||
                       draft.status === "conflict" ||
                       draft.status === "synced"

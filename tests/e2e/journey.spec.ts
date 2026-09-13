@@ -5,6 +5,21 @@ import { randomUUID } from "node:crypto";
 const fixture = () =>
   JSON.parse(readFileSync(".test-data/fixture.json", "utf8"));
 async function studentLogin(page: Page, alias = "enzo") {
+  const enter = page.getByRole("button", {
+    name: "Entrar e continuar",
+    exact: true,
+  });
+  const leave = page
+    .getByRole("button", { name: "Sair ou trocar perfil" })
+    .first();
+  await expect(enter.or(leave)).toBeVisible();
+  if (await leave.isVisible()) {
+    await page.evaluate(() => {
+      location.hash = "/";
+    });
+    await expect(page.getByRole("heading", { name: /^Olá,/ })).toBeVisible();
+    return;
+  }
   const f = fixture();
   await page.getByLabel("Código da turma").fill(f.classroom.joinCode);
   await page.getByLabel("Seu apelido").fill(alias);
@@ -28,6 +43,21 @@ async function studentLogin(page: Page, alias = "enzo") {
   ).toBeVisible();
 }
 async function teacherLogin(page: Page) {
+  const enter = page.getByRole("button", {
+    name: "Entrar e continuar",
+    exact: true,
+  });
+  const leave = page
+    .getByRole("button", { name: "Sair ou trocar perfil" })
+    .first();
+  await expect(enter.or(leave)).toBeVisible();
+  if (await leave.isVisible()) {
+    await page.evaluate(() => {
+      location.hash = "/";
+    });
+    await expect(page.getByRole("heading", { name: /^Olá,/ })).toBeVisible();
+    return;
+  }
   await page.getByRole("button", { name: "Sou professor" }).click();
   await page.getByLabel("Login do professor").fill(fixture().teacher.login);
   await page
@@ -442,7 +472,9 @@ test("assistente: proposta simulada, ajustes, revisão e recuperação offline",
   await page.getByRole("button", { name: "Criar missão" }).click();
   const title = page.getByLabel("Título da missão", { exact: true });
   await title.fill("Meu rascunho preservado");
-  await page.getByLabel("Tópicos da investigação (um por linha)").fill("Porcentagem\nComparação");
+  await page
+    .getByLabel("Tópicos da investigação (um por linha)")
+    .fill("Porcentagem\nComparação");
   await page
     .getByLabel("Recursos disponíveis")
     .fill("Um celular por equipe, papel e encartes de mercado.");

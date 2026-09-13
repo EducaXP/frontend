@@ -40,8 +40,9 @@ import type {
   Workspace,
 } from "./types";
 import { Badge, Brand, ErrorText, MissionArt, Modal } from "./ui";
-import { Vault } from "./vault";
-import type { SessionAccess } from "./session-access";
+import { Vault, type VaultAccess } from "./vault";
+import { SessionAccess } from "./session-access";
+import { TabSession } from "./tab-session";
 import { listenUpdates } from "./live";
 import { hasFocusWork } from "./focus";
 import { prepareAccess } from "./prepare-access";
@@ -49,6 +50,8 @@ import { prepareAccess } from "./prepare-access";
 const Student = lazy(() => import("./pages/Student"));
 const Teacher = lazy(() => import("./pages/Teacher"));
 interface Session {
+  resume?: TabSession;
+  vaultAccess?: VaultAccess;
   revision?: string;
   release?: () => void;
   id: string;
@@ -68,12 +71,14 @@ const message = (error: unknown) =>
 
 function Login({
   onLogin,
+  initialError,
 }: {
   onLogin: (credentials: Credentials, prepare: boolean) => Promise<void>;
+  initialError?: string;
 }) {
   const [role, setRole] = useState<Credentials["role"]>("student");
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
+    [error, setError] = useState(initialError || ""),
     [prepare, setPrepare] = useState(true);
   const form = useRef<HTMLFormElement>(null);
   async function enter() {
@@ -248,7 +253,8 @@ function Login({
           </div>
           <p className="fine-print">
             O primeiro acesso precisa de conexão. Em aparelhos compartilhados,
-            encerre seu acesso antes de passar para outra pessoa.
+            use “Sair ou trocar perfil” antes de passar para outra pessoa.
+            Atualizar a página mantém seu acesso nesta aba por até 12 horas.
           </p>
         </div>
       </section>
@@ -265,6 +271,8 @@ export default function App() {
     [saving, setSaving] = useState(false),
     [storageError, setStorageError] = useState("");
   const [accessError, setAccessError] = useState("");
+  const [restoring, setRestoring] = useState(true);
+  const [restoreError, setRestoreError] = useState("");
   const [liveError, setLiveError] = useState("");
   const [leave, setLeave] = useState(false),
     [install, setInstall] = useState<InstallEvent | null>(null);
@@ -329,7 +337,9 @@ export default function App() {
   const update = useCallback(async (fn: (data: Workspace) => Workspace) => {
     const current = ref.current;
     if (!current) return;
-    const next = { ...current, data: fn(current.data) };
+    const data = fn(current.data);
+    if (data === current.data) return;
+    const next = { ...current, data };
     ref.current = next;
     setSession(next);
     if (!next.vault) return;
@@ -412,6 +422,13 @@ export default function App() {
       const authenticated = await started.access.ensure();
       if (ref.current?.id !== started.id) return;
       if (!authenticated) {
+        if (started.access.blocked && started.resume) {
+          await started.resume.clear();
+          if (ref.current?.id !== started.id) return;
+          const next = { ...ref.current, resume: undefined };
+          ref.current = next;
+          setSession(next);
+        }
         if (ref.current.token) {
           const next = { ...ref.current, token: null };
           ref.current = next;
@@ -429,6 +446,10 @@ export default function App() {
         const next = { ...ref.current, token: authenticated.token };
         ref.current = next;
         setSession(next);
+        await ref.current.resume?.save({
+          access: started.access.snapshot(),
+          vault: started.vaultAccess,
+        });
         await update((data) => ({
           ...data,
           user: authenticated.user,
@@ -667,6 +688,105 @@ export default function App() {
     };
   }, [online, session?.id, session?.token, refresh, sync]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let restored: Session | undefined;
+    let access: SessionAccess | undefined;
+    let release: (() => void) | undefined;
+    void (async () => {
+      let capsule: TabSession | undefined;
+      let acquired = false;
+      try {
+        const saved = await TabSession.restore();
+        if (!saved || cancelled) return;
+        capsule = saved.session;
+        const { snapshot } = saved;
+        const vault = snapshot.vault
+          ? await Vault.restore(snapshot.vault)
+          : null;
+        access = SessionAccess.restore(snapshot.access);
+        if (vault) release = await vault.acquire();
+        acquired = true;
+        const local = vault ? await vault.read() : undefined;
+        if (local && local.user.id !== snapshot.access.expectedUserId)
+          throw new Error(
+            "O conteúdo local pertence a outro perfil. Entre novamente.",
+          );
+        const authenticated = navigator.onLine ? await access.ensure() : null;
+        if (access.blocked) throw access.failure;
+        if (
+          local &&
+          authenticated &&
+          (local.user.schoolId !== authenticated.user.schoolId ||
+            local.user.role !== authenticated.user.role)
+        )
+          throw new Error(
+            "As permissões deste perfil mudaram. Entre novamente; os rascunhos continuam protegidos.",
+          );
+        if (
+          !authenticated &&
+          (!local || Date.now() - local.authenticatedAt > 7 * 86400000)
+        )
+          throw new Error(
+            "Conecte-se e entre novamente para renovar seu acesso. Os rascunhos continuam protegidos.",
+          );
+        const user = authenticated?.user || local!.user;
+        const data: Workspace = local || {
+          user,
+          authenticatedAt: Date.now(),
+          classrooms: [],
+          selectedClass: "",
+          missions: [],
+          groups: [],
+          drafts: {},
+          updatedAt: 0,
+        };
+        restored = {
+          id: crypto.randomUUID(),
+          access,
+          release,
+          vault,
+          resume: capsule,
+          vaultAccess: snapshot.vault,
+          token: authenticated?.token || null,
+          data: {
+            ...data,
+            user,
+            authenticatedAt: authenticated ? Date.now() : data.authenticatedAt,
+          },
+        };
+        if (cancelled) return;
+        if (authenticated)
+          await capsule.save({
+            access: access.snapshot(),
+            vault: snapshot.vault,
+          });
+        if (vault) await vault.save(restored.data);
+        if (cancelled) return;
+        ref.current = restored;
+        setSession(restored);
+        if (authenticated)
+          void refresh().catch((error) => notice(message(error)));
+      } catch (error) {
+        if (capsule) {
+          // A duplicated tab must not erase or revoke the session holding the profile lock.
+          if (acquired) await capsule.clear().catch(() => {});
+          else capsule.detach();
+        }
+        if (!cancelled) setRestoreError(message(error));
+      } finally {
+        if (!restored || ref.current?.id !== restored.id) {
+          release?.();
+          access?.close(false);
+        }
+        if (!cancelled) setRestoring(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [notice, refresh]);
+
   async function login(credentials: Credentials, prepare: boolean) {
     const { access, authenticated, local, user } = await prepareAccess(
       credentials,
@@ -704,6 +824,18 @@ export default function App() {
       access.close();
       throw error;
     }
+    try {
+      next.vaultAccess = await next.vault?.exportAccess();
+      next.resume = await TabSession.create({
+        access: access.snapshot(),
+        vault: next.vaultAccess,
+      });
+    } catch {
+      notice(
+        "Seu acesso está aberto, mas será necessário entrar novamente se atualizar a página neste navegador.",
+      );
+    }
+    setRestoreError("");
     setLiveError("");
     ref.current = next;
     setSession(next);
@@ -730,9 +862,10 @@ export default function App() {
     if (!current) return;
     try {
       await current.vault?.flush();
+      await current.resume?.clear();
     } catch {
       notice(
-        "Há falha ao salvar. Envie ou copie o trabalho antes de encerrar.",
+        "Não foi possível salvar ou encerrar o acesso local. Mantenha a tela aberta e tente novamente.",
       );
       return;
     }
@@ -745,7 +878,14 @@ export default function App() {
     setAccessError("");
     navigate("/");
   }
-  if (!session) return <Login onLogin={login} />;
+  if (restoring)
+    return (
+      <main className="fatal" role="status">
+        <Brand />
+        <p>Retomando seu espaço…</p>
+      </main>
+    );
+  if (!session) return <Login onLogin={login} initialError={restoreError} />;
   const teacher = session.data.user.role === "teacher";
   const pending =
     Object.values(session.data.drafts).filter(hasWork).length +

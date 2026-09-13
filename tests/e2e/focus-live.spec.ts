@@ -4,6 +4,21 @@ import { readFileSync } from "node:fs";
 const fixture = () =>
   JSON.parse(readFileSync(".test-data/fixture.json", "utf8"));
 async function studentLogin(page: Page) {
+  const enter = page.getByRole("button", {
+    name: "Entrar e continuar",
+    exact: true,
+  });
+  const leave = page
+    .getByRole("button", { name: "Sair ou trocar perfil" })
+    .first();
+  await expect(enter.or(leave)).toBeVisible();
+  if (await leave.isVisible()) {
+    await page.evaluate(() => {
+      location.hash = "/";
+    });
+    await expect(page.getByRole("heading", { name: /^Olá,/ })).toBeVisible();
+    return;
+  }
   const f = fixture();
   await page.getByLabel("Código da turma").fill(f.classroom.joinCode);
   await page.getByLabel("Seu apelido").fill("caio");
@@ -11,9 +26,7 @@ async function studentLogin(page: Page) {
   await page
     .getByRole("button", { name: "Entrar e continuar", exact: true })
     .click();
-  await expect(
-    page.getByRole("heading", { name: "Olá, Caio!" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Olá, Caio!" })).toBeVisible();
 }
 async function open(page: Page, title: string) {
   await page
