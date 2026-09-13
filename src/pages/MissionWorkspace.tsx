@@ -1,3 +1,4 @@
+import { ChallengeBrief } from "./Challenge";
 import FocusPanel from "./FocusPanel";
 import { QuestionAnswers } from "./Investigation";
 import { useEffect, useState } from "react";
@@ -174,7 +175,6 @@ export default function MissionWorkspace({
       />
       <div className="detail-layout">
         <section className="stack">
-          <FocusPanel mission={mission} group={group} />
           <article className="card mission-intro">
             <div className="row wrap">
               <Badge>{mission.content.subject}</Badge>
@@ -194,6 +194,10 @@ export default function MissionWorkspace({
               <span>{group.members.length} participante(s)</span>
             </div>
           </article>
+          {mission.content.challenge && (
+            <ChallengeBrief challenge={mission.content.challenge} />
+          )}
+          <FocusPanel mission={mission} group={group} />
           <section className="card">
             <h2>Um passo de cada vez</h2>
             <p className="muted">

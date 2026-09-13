@@ -3232,3 +3232,80 @@ blockquote {
     gap: 12px;
   }
 }
+
+.challenge-brief {
+  border-top: 4px solid #31745b;
+  min-width: 0;
+}
+.challenge-brief .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.challenge-brief h2 {
+  margin: 0.8rem 0;
+  overflow-wrap: anywhere;
+}
+.challenge-brief h3 {
+  margin-top: 1.2rem;
+}
+.challenge-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.65;
+}
+.challenge-rules {
+  background: #f0f6f2;
+  border-radius: 12px;
+  padding: 0.25rem 1rem 0.5rem;
+  margin-top: 1rem;
+  color: #253d32;
+}
+.challenge-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 1rem 0;
+  border: 1px solid #d8e3db;
+  border-radius: 10px;
+}
+.challenge-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.challenge-table caption {
+  text-align: left;
+  padding: 0.8rem;
+  font-weight: 600;
+  background: #f0f6f2;
+  color: #253d32;
+}
+.challenge-table th,
+.challenge-table td {
+  padding: 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid #d8e3db;
+  min-width: 8rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.challenge-table thead {
+  background: #f7f9f7;
+  color: #253d32;
+}
+.challenge-editor fieldset {
+  min-width: 0;
+}
+.challenge-editor details > .challenge-brief {
+  margin-top: 1rem;
+}
+
+.challenge-table-help {
+  display: none;
+}
+@media (max-width: 640px) {
+  .challenge-table-help {
+    display: block;
+  }
+}

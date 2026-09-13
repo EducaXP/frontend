@@ -30,7 +30,16 @@ export interface Answer {
   questionId: string;
   text: string;
 }
+export interface Challenge {
+  scenario: string;
+  drivingQuestion: string;
+  startingData: string;
+  constraints: string;
+  deliverable: string;
+  dataTable: { caption: string; columns: string[]; rows: string[][] } | null;
+}
 export interface Content {
+  challenge?: Challenge;
   questions?: Question[];
   title: string;
   objective: string;

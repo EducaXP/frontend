@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { pathToFileURL } from "node:url";
 const backendRoot = resolve(process.env.EDUCAXP_BACKEND_PATH || "../backend");
@@ -16,6 +16,9 @@ const { createPlanningAgent } = await import(
   pathToFileURL(join(backendRoot, "dist/ai.js")).href
 );
 mkdirSync(".test-data", { recursive: true });
+const travel = JSON.parse(
+  readFileSync(join(backendRoot, "test/fixtures/travel.json"), "utf8"),
+);
 const directory = mkdtempSync(resolve(".test-data/run-"));
 const { Store } = await import(
   pathToFileURL(join(backendRoot, "dist/db.js")).href
@@ -71,6 +74,10 @@ const { app, db } = await buildApp({
           "Proposta simulada para teste: revise a investigação e a rubrica.",
         content: {
           ...planningTemplate({ ...context, theme: "preços de mercado" }),
+          challenge: {
+            ...travel.challenge,
+            drivingQuestion: "Como comparar escolhas com os dados disponíveis?",
+          },
           questions: (context.topics?.length
             ? context.topics
             : ["Porcentagem", "Comparação"]
@@ -87,6 +94,16 @@ const { app, db } = await buildApp({
             : "Mercado colaborativo: proposta de teste",
         },
       };
+      if (context.instruction.toLowerCase().includes("viagem")) {
+        proposal.content = {
+          ...proposal.content,
+          ...travel,
+          title: "Desafio: Qual viagem cabe no orçamento?",
+          subject: context.subject,
+          schoolYear: context.schoolYear,
+          durationMinutes: context.durationMinutes,
+        };
+      }
       return Response.json({
         choices: [
           {
@@ -138,8 +155,14 @@ const lucas = await send(`/classrooms/${classroom.id}/students`, {
   name: "Lucas",
   alias: "lucas",
 });
-const caio = await send(`/classrooms/${classroom.id}/students`, {name:"Caio",alias:"caio"});
-await send(`/classrooms/${classroom.id}/groups`, {name:"Equipe Cedro",members:[{studentId:caio.id,role:"Investigar"}]});
+const caio = await send(`/classrooms/${classroom.id}/students`, {
+  name: "Caio",
+  alias: "caio",
+});
+await send(`/classrooms/${classroom.id}/groups`, {
+  name: "Equipe Cedro",
+  members: [{ studentId: caio.id, role: "Investigar" }],
+});
 const group = await send(`/classrooms/${classroom.id}/groups`, {
   name: "Equipe Ipê",
   members: [

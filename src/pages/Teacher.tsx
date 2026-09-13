@@ -1,3 +1,4 @@
+import { ChallengeEditor } from "./Challenge";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -657,6 +658,10 @@ function Editor({ initial }: { initial?: Mission }) {
           void save(true);
         }}
       >
+        <ChallengeEditor
+          challenge={content.challenge}
+          onChange={(challenge) => change({ challenge })}
+        />
         <QuestionEditor
           questions={content.questions || []}
           onChange={(questions) => change({ questions })}
@@ -683,8 +688,15 @@ function Editor({ initial }: { initial?: Mission }) {
               className="button secondary"
               disabled={!theme.trim()}
               onClick={() => {
+                if (
+                  (content.challenge || content.questions?.length) &&
+                  !window.confirm(
+                    "Aplicar outro modelo substituirá o enunciado e as perguntas deste rascunho. Deseja continuar?",
+                  )
+                )
+                  return;
                 const next = template(theme);
-                change(next);
+                change({ ...next, challenge: undefined, questions: undefined });
               }}
             >
               Aplicar modelo ao rascunho

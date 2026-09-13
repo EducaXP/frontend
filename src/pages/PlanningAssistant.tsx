@@ -1,3 +1,4 @@
+import { ChallengeBrief } from "./Challenge";
 import { useEffect, useRef, useState } from "react";
 import { MessageSquare, Send, Sparkles } from "lucide-react";
 import { useApp } from "../context";
@@ -189,7 +190,8 @@ export default function PlanningAssistantPanel({
           <div>
             <h2>Planeje com seu assistente</h2>
             <p className="muted">
-              Descreva sua ideia. Peça ajustes. Construa a atividade com a IA.
+              Transforme os tópicos em um problema que a turma possa investigar,
+              resolver ou criar em equipe.
             </p>
           </div>
         </div>
@@ -273,14 +275,15 @@ export default function PlanningAssistantPanel({
             maxLength={4000}
             required
             disabled={busy}
-            placeholder="Crie uma missão sobre porcentagem usando preços de mercado, com investigação em equipes e uma rubrica simples."
+            placeholder="Descreva a situação que a turma vai enfrentar e o que deve produzir ou decidir. Ex.: planejar uma viagem com orçamento limitado, comparar opções e defender a escolha com cálculos."
             value={assistant.prompt}
             onChange={(e) => edit({ prompt: e.target.value })}
           />
         </label>
         <div className="row between wrap">
           <small className="muted">
-            Você revisa a proposta antes de aplicá-la e publicá-la.
+            Pode ser uma investigação, projeto, experimento, debate ou criação.
+            Você revisa a proposta antes de publicar.
           </small>
           <button
             className="button primary"
@@ -339,6 +342,10 @@ export default function PlanningAssistantPanel({
             {assistant.proposal.content.schoolYear} ·{" "}
             {assistant.proposal.content.durationMinutes} min
           </p>
+          {assistant.proposal.content.challenge && (
+            <ChallengeBrief challenge={assistant.proposal.content.challenge} />
+          )}
+          <h3>Caminho da equipe</h3>
           <ol>
             {assistant.proposal.content.steps.map((step, i) => (
               <li key={i}>

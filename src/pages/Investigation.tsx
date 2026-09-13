@@ -11,8 +11,9 @@ export function QuestionEditor({
     <section className="card stack">
       <h2>Pontos-chave da investigação</h2>
       <p className="muted">
-        Defina uma pergunta por ponto-chave. A equipe precisará entregar uma
-        resposta a cada questão, inclusive quando o registro for mediado.
+        Conecte cada ponto-chave a uma parte da solução do desafio. A equipe
+        precisará entregar uma resposta a cada questão, inclusive quando o
+        registro for mediado.
       </p>
       {questions.map((question, i) => (
         <div className="card soft" key={question.id}>
@@ -91,7 +92,7 @@ export function QuestionAnswers({
       {questions.map((q, i) => (
         <div key={q.id} className="card soft">
           <strong>
-            PISTA {i + 1} · {q.topic}
+            QUESTÃO {i + 1} · {q.topic}
           </strong>
           <p>{q.prompt}</p>
           {onChange ? (
